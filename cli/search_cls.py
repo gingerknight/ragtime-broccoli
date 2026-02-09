@@ -36,12 +36,13 @@ class MovieSearch:
     def find_titles(self, query: str) -> list[str]:
         found_titles: list[str] = []
         title_tuple = []
-        q = self._remove_punctuation(query.lower())
+        query_lower_no_punc = self._remove_punctuation(query.lower())
+        q_token = self._tokenize_query(query_lower_no_punc)
 
         for movie in self._movies:
             title = movie.get("title")
             m_id = movie.get("id")
-            if q in self._remove_punctuation(title.casefold()):
+            if any(q in self._remove_punctuation(title.casefold()) for q in q_token):
                 title_tuple.append((title, m_id))
         
         # in place sort list of tuples by second element (id)
@@ -58,3 +59,8 @@ class MovieSearch:
     def _remove_punctuation(self, title: str) -> str:
         # remove stardard punctuation from movie or query title string
         return title.translate(str.maketrans('','',string.punctuation))
+    
+    def _tokenize_query(self, query: str) -> list[str]:
+        # tokenize query string on whitespace
+        # no stemming
+        return query.split()
