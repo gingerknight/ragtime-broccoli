@@ -7,6 +7,7 @@
 import json
 from typing import Any
 from operator import itemgetter
+import string
 
 class MovieSearch:
     def __init__(self, movies: list[dict[str, Any]]):
@@ -35,12 +36,12 @@ class MovieSearch:
     def find_titles(self, query: str) -> list[str]:
         found_titles: list[str] = []
         title_tuple = []
-        q = query.casefold()
+        q = self._remove_punctuation(query.lower())
 
         for movie in self._movies:
             title = movie.get("title")
             m_id = movie.get("id")
-            if q in title.casefold():
+            if q in self._remove_punctuation(title.casefold()):
                 title_tuple.append((title, m_id))
         
         # in place sort list of tuples by second element (id)
@@ -53,3 +54,7 @@ class MovieSearch:
     def _truncate_data(self, titles: list, n: int = 5) -> None:
         for num, title in enumerate(titles[:n]):
             print(f"{num+1}. {title}")
+
+    def _remove_punctuation(self, title: str) -> str:
+        # remove stardard punctuation from movie or query title string
+        return title.translate(str.maketrans('','',string.punctuation))
