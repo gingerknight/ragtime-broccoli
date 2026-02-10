@@ -4,28 +4,23 @@
 * Iterate over movies section and match title field
 * Order return by IDs ascending
 """
-import json
+
 from typing import Any
 from operator import itemgetter
 import string
 
-from utils.constants import DEFAULT_MAX_TITLES
+from utils.helpers import DEFAULT_MAX_TITLES, load_stopwords, load_movies
 
 class MovieSearch:
-    def __init__(self, movies: list[dict[str, Any]]):
+    def __init__(self, movies: list[dict[str, Any]], stopwords: list[str]):
         self._movies = movies
+        self._stopwords = stopwords or []
 
     @classmethod
-    def from_file(cls, path: str = "data/movies.json") -> "MovieSearch":
-        try:
-            with open(path, 'r') as movie_json:
-                payload = json.load(movie_json)
-
-        except FileNotFoundError as e:
-            raise FileNotFoundError(f"Missin file: {path}") from e
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Bad json in {path}") from e
-        return cls(payload["movies"])
+    def from_file(cls, movies_path: str = "data/movies.json", stop_path: str = "data/stopwords.txt") -> "MovieSearch":
+        movies = load_movies(movies_path)
+        stopwords = load_stopwords(stop_path)
+        return cls(movies=movies, stopwords=stopwords)
 
     def sample_data(self, n: int = DEFAULT_MAX_TITLES) -> None:
         print("Printing Sample Titles and Movie Ids:...")
