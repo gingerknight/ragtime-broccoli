@@ -9,7 +9,7 @@ from typing import Any
 from operator import itemgetter
 import string
 
-from utils.helpers import DEFAULT_MAX_TITLES, load_stopwords, load_movies
+from .utils.helpers import DEFAULT_MAX_TITLES, load_stopwords, load_movies
 
 class MovieSearch:
     def __init__(self, movies: list[dict[str, Any]], stopwords: set[str]):
