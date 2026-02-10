@@ -9,7 +9,12 @@ from typing import Any
 from operator import itemgetter
 import string
 
-from .utils.helpers import DEFAULT_MAX_TITLES, load_stopwords, load_movies
+try:
+    # Package import when run as module
+    from .helpers import DEFAULT_MAX_TITLES, load_stopwords, load_movies
+except ImportError:
+    # Script execution fallback
+    from helpers import DEFAULT_MAX_TITLES, load_stopwords, load_movies
 
 
 class MovieSearch:

@@ -1,14 +1,7 @@
 from __future__ import annotations
 
-import sys
-from pathlib import Path
-
+# Run with uv run pytest as module
 from cli.search_cls import MovieSearch
-
-# Ensure repo root is on sys.path so `import cli.search_cls` works.
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
 
 
 def make_movies():

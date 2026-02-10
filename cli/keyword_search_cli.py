@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
-from search_cls import MovieSearch
+
+# Script vs module import setup
+try:
+    from search_cls import MovieSearch
+except ImportError:
+    from .search_cls import MovieSearch
 
 
 def main() -> None:
