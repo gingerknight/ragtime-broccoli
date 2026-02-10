@@ -12,14 +12,17 @@ def main() -> None:
     search_parser.add_argument("--path", default="data/movies.json")
 
     args = parser.parse_args()
-
-    ms = MovieSearch.from_file()
+    try:
+        ms = MovieSearch.from_file(args.path)
+    except Exception as e:
+        print("Unable to load data file...check your movies.json file: {e}")
 
     match args.command:
         case "search":
             print(f"Searching for: {args.query}")
             # ms.sample_data()
-            ms.find_titles(args.query)       
+            titles = ms.find_titles(args.query)
+            ms.print_results(titles)     
         case _:
             parser.print_help()
 
