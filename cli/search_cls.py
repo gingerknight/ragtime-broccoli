@@ -12,9 +12,9 @@ import string
 from utils.helpers import DEFAULT_MAX_TITLES, load_stopwords, load_movies
 
 class MovieSearch:
-    def __init__(self, movies: list[dict[str, Any]], stopwords: list[str]):
+    def __init__(self, movies: list[dict[str, Any]], stopwords: set[str]):
         self._movies = movies
-        self._stopwords = stopwords or []
+        self._stopwords = stopwords or set()
 
     @classmethod
     def from_file(cls, movies_path: str = "data/movies.json", stop_path: str = "data/stopwords.txt") -> "MovieSearch":
@@ -32,11 +32,12 @@ class MovieSearch:
     def find_titles(self, query: str) -> list[tuple[int|str]]:
         matched_titles = []
         q_token = self._tokenize_query(self._normalize(query))
+        q_token_stops = self._drop_stopwords(q_token)
 
         for movie in self._movies:
             title = movie.get("title", "")
             m_id = movie.get("id")
-            if any(q in self._normalize(title) for q in q_token):
+            if any(q in self._normalize(title) for q in q_token_stops):
                 matched_titles.append((title, m_id))
         
         # in place sort list of tuples by second element (id)
@@ -53,9 +54,12 @@ class MovieSearch:
     def _normalize(self, title: str) -> str:
         # remove stardard punctuation from movie or query title string
         # drop case to lower
-
         drop_punc_title = title.translate(str.maketrans('','',string.punctuation))
         return drop_punc_title.lower()
+    
+    def _drop_stopwords(self, tokens: list[str]) -> list[str]:
+        # drop stop words from user/title list
+        return list( set(tokens) - self._stopwords)
     
     
     def _tokenize_query(self, query: str) -> list[str]:

@@ -4,9 +4,9 @@ from typing import Any
 DEFAULT_MAX_TITLES = 5
 
 # load stop words from file
-def load_stopwords(filePath: str = "data/stopwords.txt") -> list[str]:
+def load_stopwords(filePath: str = "data/stopwords.txt") -> set[str]:
     with open(filePath, "r") as stopFile:
-        return stopFile.read().splitlines()
+        return set(stopFile.read().splitlines())
 
 # load json movie data into dict
 def load_movies(movie_path: str) -> list[dict[str, Any]]:
