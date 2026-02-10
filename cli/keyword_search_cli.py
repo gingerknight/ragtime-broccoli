@@ -3,6 +3,7 @@
 import argparse
 from search_cls import MovieSearch
 
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Keyword Search CLI")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -14,7 +15,7 @@ def main() -> None:
     args = parser.parse_args()
     try:
         ms = MovieSearch.from_file(args.path)
-    except Exception as e:
+    except Exception:
         print("Unable to load data file...check your movies.json file: {e}")
 
     match args.command:
@@ -22,9 +23,10 @@ def main() -> None:
             print(f"Searching for: {args.query}")
             # ms.sample_data()
             titles = ms.find_titles(args.query)
-            ms.print_results(titles)     
+            ms.print_results(titles)
         case _:
             parser.print_help()
+
 
 if __name__ == "__main__":
     main()
