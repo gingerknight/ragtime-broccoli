@@ -1,6 +1,6 @@
-# RAG Search Engine
+# Learnin RAG basics
 
-A portfolio‑grade, learning‑driven search engine that starts with classic keyword search and evolves into a full Retrieval‑Augmented Generation (RAG) pipeline. The focus is not just building features, but building them **correctly**: clear interfaces, testable components, and measurable tradeoffs.
+A learning‑driven project that starts with classic keyword search and evolves into a full Retrieval‑Augmented Generation (RAG) pipeline. The focus is not just building features, but building them **correctly**: clear interfaces, testable components, and measurable tradeoffs.
 
 **Status (Today)**
 - Keyword search over movie titles
