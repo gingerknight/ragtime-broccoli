@@ -8,6 +8,7 @@
 from typing import Any
 from operator import itemgetter
 import string
+from nltk.stem import PorterStemmer
 
 try:
     # Package import when run as module
@@ -43,11 +44,12 @@ class MovieSearch:
         matched_titles = []
         q_token = self._tokenize_query(self._normalize(query))
         q_token_stops = self._drop_stopwords(q_token)
+        q_stemmed = self._stem_tokenizer(q_token_stops)
 
         for movie in self._movies:
             title = movie.get("title", "")
             m_id = movie.get("id")
-            if any(q in self._normalize(title) for q in q_token_stops):
+            if any(q in self._normalize(title) for q in q_stemmed):
                 matched_titles.append((title, m_id))
 
         # in place sort list of tuples by second element (id)
@@ -70,6 +72,14 @@ class MovieSearch:
     def _drop_stopwords(self, tokens: list[str]) -> list[str]:
         # drop stop words from user/title list
         return list(set(tokens) - self._stopwords)
+    
+    def _stem_tokenizer(self, tokens: list[str]) -> list[str]:
+        # stem the words in the tokens list
+        stemmer = PorterStemmer()
+        stemmed = []
+        for word in tokens:
+            stemmed.append(stemmer.stem(word))
+        return stemmed
 
     def _tokenize_query(self, query: str) -> list[str]:
         # tokenize query string on whitespace
