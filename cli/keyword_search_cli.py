@@ -4,9 +4,9 @@ import argparse
 
 # Script vs module import setup
 try:
-    from search_cls import MovieSearch
+    from search_cls import MovieSearch, InvertedIndex
 except ImportError:
-    from .search_cls import MovieSearch
+    from .search_cls import MovieSearch, InvertedIndex
 
 
 def main() -> None:
@@ -17,11 +17,13 @@ def main() -> None:
     search_parser.add_argument("query", type=str, help="Search Query")
     search_parser.add_argument("--path", default="data/movies.json")
 
+    subparsers.add_parser("build", help="Build Inverse index artifacts")
+
     args = parser.parse_args()
     try:
-        ms = MovieSearch.from_file(args.path)
-    except Exception:
-        print("Unable to load data file...check your movies.json file: {e}")
+        ms = MovieSearch.from_file("data/movies.json")
+    except Exception as e:
+        print(f"Unable to load data file...check your movies.json file: {e}")
 
     match args.command:
         case "search":
@@ -29,6 +31,15 @@ def main() -> None:
             # ms.sample_data()
             titles = ms.find_titles(args.query)
             ms.print_results(titles)
+        case "build":
+            try:
+                inv = InvertedIndex()
+                inv.build(ms._movies)
+                # Debug statement
+                merida_list = inv.get_documents("merida")
+                print(f"First document for token 'merida' = {merida_list[0]}")
+            except Exception as e:
+                print(f"Unable to build index and/or docmap: {e}")
         case _:
             parser.print_help()
 
