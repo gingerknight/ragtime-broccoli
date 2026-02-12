@@ -9,6 +9,7 @@ DEFAULT_MAX_TITLES = 5
 
 INDEX_PATH = "./cache/index.pkl"
 DOCMAP_PATH = "./cache/docmap.pkl"
+TF_PATH = "./cache/term_frequencies.pkl"
 
 MOVIES_PATH: str = "data/movies.json"
 STOP_PATH: str = "data/stopwords.txt"
@@ -44,7 +45,8 @@ def normalize(title: str) -> list[str]:
         if word:
             valid_tokens.append(word)
     # drop stop words from tokens
-    drop_stops = list(set(valid_tokens) - load_stopwords())
+    stop_words = load_stopwords()
+    drop_stops = [x for x in valid_tokens if x not in stop_words]
     # stem the words in the tokens list
     stemmer = PorterStemmer()
     stemmed = []

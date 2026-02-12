@@ -9,6 +9,7 @@ from typing import Any, Dict, List
 import pickle
 import os
 import json
+from collections import Counter
 
 
 from helpers import (
@@ -17,8 +18,9 @@ from helpers import (
     load_movies,
     INDEX_PATH,
     DOCMAP_PATH,
+    TF_PATH,
 )
-from errors.exception_handling import DataLoadError, IndexBuildError, CacheIOError
+from errors.exception_handling import DataLoadError, IndexBuildError, CacheIOError, InvalidTerm
 
 
 class MovieSearch:
@@ -69,26 +71,6 @@ class MovieSearch:
         for num, title in enumerate(titles[:n]):
             print(f"{num + 1}. {title}")
 
-    """
-    def _drop_stopwords(self, tokens: list[str]) -> list[str]:
-        # drop stop words from user/title list
-        return list(set(tokens) - self._stopwords)
-
-    def _stem_tokenizer(self, tokens: list[str]) -> list[str]:
-        # stem the words in the tokens list
-        stemmer = PorterStemmer()
-        stemmed = []
-        for word in tokens:
-            stemmed.append(stemmer.stem(word))
-        return stemmed
-
-    def _tokenize_query(self, query: str) -> list[str]:
-        # tokenize query string on whitespace
-        # no stemming
-        return query.split()
-    """
-
-
 class InvertedIndex:
     """
     Inverted index (also referred to as a postings list, postings file, or inverted file) is a database index storing a mapping from content, such as words or numbers, to its locations in a table, or in a document or a set of documents (named in contrast to a forward index, which maps from documents to content).[1] The purpose of an inverted index is to allow fast full-text searches, at a cost of increased processing when a document is added to the database.[2] The inverted file may be the database file itself, rather than its index. It is the most popular data structure used in document retrieval systems,[3] used on a large scale for example in search engines. Additionally, several significant general-purpose mainframe-based database management systems have used inverted list architectures, including ADABAS, DATACOM/DB, and Model 204.
@@ -99,10 +81,7 @@ class InvertedIndex:
         self.index: Dict[str, set[int]] = {}
         # dictionary mapping doc Ids to their full doc objects
         self.docmap: Dict[int, Dict[str, Any]] = {}
-
-    def _add_document(self, doc_id: int, text: str):
-        for word in normalize(text):
-            self.index.setdefault(word, set()).add(doc_id)
+        self.term_frequencies: Dict[int, Counter] = {}
 
     def get_documents(self, term: str) -> list[int]:
         # Get set of doc_ids for given token
@@ -138,6 +117,27 @@ class InvertedIndex:
             pickle.dump(self.index, index_fp)
         with open(DOCMAP_PATH, "wb") as docmap_fp:
             pickle.dump(self.docmap, docmap_fp)
+        with open(TF_PATH, "wb") as tf_fp:
+            pickle.dump(self.term_frequencies, tf_fp)
+
+    def _add_document(self, doc_id: int, text: str):
+        cnt = Counter()
+        tokens = normalize(text)
+        for word in tokens:
+            self.index.setdefault(word, set()).add(doc_id)
+            cnt[word] +=1
+
+        # add to counter dictionary
+        self.term_frequencies[doc_id] = cnt
+
+    def get_tf(self, doc_id, term) -> int:
+        # return the times the token term appears in the document with given ID
+        token = normalize(term)
+        if len(token) > 1:
+            raise InvalidTerm("Expected sinle word term, not multiple tokens")
+        # sets num to 0 if term doesn't appear in Counter iterable
+        num = self.term_frequencies[doc_id][token[0]]
+        return num
 
     def _debug_cache(self) -> None:
         # For Dev: debug cache contents and structure
@@ -151,13 +151,15 @@ class InvertedIndex:
             json.dump(self.docmap, dfp, ensure_ascii=False, indent=2)
 
     @staticmethod
-    def load() -> tuple[dict[str, set[int]], dict[int, dict[str, Any]]]:
+    def load():
         # Load pickle cache files from disk
         try:
             with open(INDEX_PATH, "rb") as ifp:
                 index_cache = pickle.load(ifp)
             with open(DOCMAP_PATH, "rb") as rfp:
                 docmap_cache = pickle.load(rfp)
+            with open(TF_PATH, "rb") as tfp:
+                tf_cache = pickle.load(tfp)
         except FileNotFoundError as e:
             raise DataLoadError(f"Unable to load cache files: {e}") from e
-        return index_cache, docmap_cache
+        return index_cache, docmap_cache, tf_cache

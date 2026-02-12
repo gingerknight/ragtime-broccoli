@@ -15,8 +15,14 @@ def main() -> None:
 
     subparsers.add_parser("build", help="Build Inverse index artifacts")
     subparsers.add_parser("load", help="Load pickle cache files for processed data")
+    
+    term_frequency_parser = subparsers.add_parser("tf", help="Fetch term frequency in the related doc")
+    term_frequency_parser.add_argument("id", type=int, help="Docuemnt ID in the Inverse Index cache")
+    term_frequency_parser.add_argument("term", type=str, help="Search term you are lookin for")
 
     args = parser.parse_args()
+    # initialize inv object
+    inv = InvertedIndex()
     try:
         ms = MovieSearch.from_file()
     except Exception as e:
@@ -27,7 +33,7 @@ def main() -> None:
         case "search":
             print("Loading cache files...")
             try:
-                idx_cache, docmap_cache = InvertedIndex.load()
+                idx_cache, docmap_cache, tf_cache = InvertedIndex.load()
             except SearchEngineError as e:
                 print(f"Error: {e}")
                 return 2
@@ -39,13 +45,18 @@ def main() -> None:
             ms.print_results(titles)
         case "build":
             try:
-                inv = InvertedIndex()
                 inv.build(ms._movies)
                 # Debug statement
                 # merida_list = inv.get_documents("merida")
                 # print(f"First document for token 'merida' = {merida_list[0]}")
             except Exception as e:
                 print(f"Unable to build index and/or docmap: {e}")
+        case "tf":
+            _, _, tf_cache = InvertedIndex.load()
+            inv.term_frequencies = tf_cache
+            print(f"Fetching term frequency with params {args.id} -- {args.term} ")
+            num = inv.get_tf(args.id, args.term)
+            print(f"Term frequency for {args.term} --> {num}")
         case _:
             parser.print_help()
 
