@@ -1,84 +1,79 @@
-# Learnin RAG basics
+# RAG Search Engine (Lexical Baseline)
 
-A learning‑driven project that starts with classic keyword search and evolves into a full Retrieval‑Augmented Generation (RAG) pipeline. The focus is not just building features, but building them **correctly**: clear interfaces, testable components, and measurable tradeoffs.
+This project is a learning-first retrieval engine over a movie dataset. It currently implements a lexical pipeline with an inverted index, term frequencies, inverse document frequency, and simple TF-IDF scoring exposed through a CLI.
 
-**Status (Today)**
-- Keyword search over movie titles
-- Normalization, tokenization, stopword filtering
-- CLI‑first interface
-- Pytest coverage for core search behavior
+## Current Features
+- Build an inverted index from `data/movies.json`
+- Normalize text (lowercase, punctuation removal, stopword filtering, stemming)
+- Search movie titles/descriptions by normalized tokens
+- Query term frequency (TF) for a document-term pair
+- Query inverse document frequency (IDF) for a term
+- Compute TF-IDF for a document-term pair
+- Pytest coverage for search/index/CLI flows
 
-**Why this project matters**
-This codebase is a deliberate, incremental build. Each step is implemented simply first, then upgraded once a real limitation appears. This mirrors how production search systems are built: the constraints drive the architecture, not the other way around.
+## Project Layout
+- `cli/keyword_search_cli.py`: CLI entrypoint
+- `cli/search_cls.py`: `MovieSearch` and `InvertedIndex`
+- `cli/helpers.py`: normalization + file/cache constants
+- `cli/errors/exception_handling.py`: custom exceptions
+- `data/`: source dataset and stopwords
+- `cache/`: generated index artifacts
+- `tests/`: pytest test suite
 
-**What it will become**
-- TF‑IDF and BM25 scoring
-- Semantic search with embeddings
-- Chunking + document segmentation
-- Hybrid retrieval (lexical + semantic)
-- Reranking pipelines
-- LLM‑powered RAG responses
+## Requirements
+- Python `>=3.13`
+- `uv`
 
----
-
-## Project Structure
-- `cli/` command‑line interface and search logic
-- `cli/utils/` helpers (data loading, stopwords, constants)
-- `tests/` pytest tests
-- `data/` datasets (movies, stopwords)
-
----
-
-## Quick Start
-1. Install dependencies
+Install dependencies:
 ```bash
-uv lock
 uv sync --dev
 ```
 
-2. Run search
+## CLI Usage
+Run commands from project root (`rag-search-engine/`).
+
+Build cache artifacts first:
 ```bash
-uv run python -m cli.keyword_search_cli search "star wars"
+uv run cli/keyword_search_cli.py build
 ```
 
-3. Run tests
+Search:
+```bash
+uv run cli/keyword_search_cli.py search "brave bear"
+```
+
+Term frequency for one document/term:
+```bash
+uv run cli/keyword_search_cli.py tf 424 trapper
+```
+
+Inverse document frequency:
+```bash
+uv run cli/keyword_search_cli.py idf trapper
+```
+
+TF-IDF score:
+```bash
+uv run cli/keyword_search_cli.py tfidf 424 trapper
+```
+
+## Cache Artifacts
+`build` writes pickle files under `cache/`:
+- `index.pkl`: token -> set of doc IDs
+- `docmap.pkl`: doc ID -> movie object
+- `term_frequencies.pkl`: doc ID -> token frequency counter
+
+## Running Tests
 ```bash
 uv run pytest
 ```
 
----
+Pytest is configured with:
+- `--import-mode=importlib`
+- `pythonpath = [".", "cli"]`
 
-## Engineering Principles (Portfolio‑Ready)
-- **Separation of concerns**: data loading, preprocessing, search, and presentation are isolated.
-- **Testability first**: search returns data; the CLI owns formatting.
-- **Preprocessing pipeline**: normalization + tokenization + stopword filtering is explicit and reusable.
-- **Incremental complexity**: each new feature justifies its added complexity and cost.
+(from `pyproject.toml`)
 
----
-
-## Roadmap (High‑Level)
-1. **TF‑IDF**
-   - Build term frequency + inverse document frequency
-   - Add scoring, ranking, and evaluation metrics
-2. **BM25**
-   - Replace TF‑IDF scoring with BM25
-   - Compare precision/recall tradeoffs
-3. **Chunking**
-   - Support longer documents beyond titles
-   - Introduce chunk boundaries and overlap strategies
-4. **Semantic Search**
-   - Embed documents and queries
-   - Add vector similarity search
-5. **Hybrid Search**
-   - Combine lexical + semantic scores
-   - Tune weights and evaluate
-6. **Reranking**
-   - Add a cross‑encoder for final ordering
-   - Compare quality vs latency
-7. **RAG Integration**
-   - Retrieve context
-   - Generate grounded responses with an LLM
-
----
-
-
+## Notes
+- The CLI currently imports modules as script-local imports (`from search_cls import ...`), so invoking commands as shown above (`uv run cli/keyword_search_cli.py ...`) is the expected runtime path.
+- The retrieval/scoring implementation is intentionally simple and serves as a baseline for future BM25/semantic retrieval work.
