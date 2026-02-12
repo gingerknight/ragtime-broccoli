@@ -8,6 +8,13 @@ dependencies = [
     "nltk==3.9.1",
 ]
 
+[tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+
+pythonpath = [".", "cli"]
+
 [dependency-groups]
 lint = [
     "ruff>=0.15.0",
@@ -15,3 +22,9 @@ lint = [
 test = [
     "pytest>=9.0.2",
 ]
+dev = [
+    "ipython>=9.0",
+]
+
+[tool.uv]
+default-groups = ["test", "lint", "dev"]
