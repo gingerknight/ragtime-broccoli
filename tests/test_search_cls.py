@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from cli.search_cls import InvertedIndex, MovieSearch
-from errors.exception_handling import DataLoadError, IndexBuildError
+from errors.exception_handling import DataLoadError, IndexBuildError, InvalidTerm
 
 
 def make_movies():
@@ -85,3 +85,22 @@ def test_load_raises_data_load_error_when_cache_missing(monkeypatch):
 
     with pytest.raises(DataLoadError):
         InvertedIndex.load()
+
+
+def test_get_tf_returns_normalized_token_count(monkeypatch):
+    inv = InvertedIndex()
+    inv.term_frequencies = {424: {"trapper": 4, "bear": 1}}
+
+    monkeypatch.setattr("cli.search_cls.normalize", lambda term: ["trapper"])
+
+    assert inv.get_tf(424, "trappers") == 4
+
+
+def test_get_tf_raises_for_multiword_term(monkeypatch):
+    inv = InvertedIndex()
+    inv.term_frequencies = {1: {"brave": 1}}
+
+    monkeypatch.setattr("cli.search_cls.normalize", lambda term: ["one", "two"])
+
+    with pytest.raises(InvalidTerm):
+        inv.get_tf(1, "one two")

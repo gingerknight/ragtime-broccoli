@@ -27,7 +27,11 @@ def test_main_search_path_runs_query(monkeypatch, capsys):
 
     monkeypatch.setattr(cli_mod.argparse.ArgumentParser, "parse_args", lambda _self: Namespace(command="search", query="brave"))
     monkeypatch.setattr(cli_mod.MovieSearch, "from_file", classmethod(lambda _cls: fake_ms))
-    monkeypatch.setattr(cli_mod.InvertedIndex, "load", staticmethod(lambda: ({"brave": [1]}, {1: {"title": "Brave"}})))
+    monkeypatch.setattr(
+        cli_mod.InvertedIndex,
+        "load",
+        staticmethod(lambda: ({"brave": [1]}, {1: {"title": "Brave"}}, {1: {"brave": 1}})),
+    )
 
     rc = cli_mod.main()
 
@@ -85,3 +89,26 @@ def test_main_returns_2_when_cache_load_fails(monkeypatch, capsys):
     out = capsys.readouterr().out
     assert rc == 2
     assert "Error: cache fail" in out
+
+
+def test_main_tf_path_prints_frequency(monkeypatch, capsys):
+    fake_ms = _FakeMovieSearch()
+
+    monkeypatch.setattr(
+        cli_mod.argparse.ArgumentParser,
+        "parse_args",
+        lambda _self: Namespace(command="tf", id=424, term="trapper"),
+    )
+    monkeypatch.setattr(cli_mod.MovieSearch, "from_file", classmethod(lambda _cls: fake_ms))
+    monkeypatch.setattr(
+        cli_mod.InvertedIndex,
+        "load",
+        staticmethod(lambda: ({}, {}, {424: {"trapper": 4}})),
+    )
+
+    rc = cli_mod.main()
+
+    out = capsys.readouterr().out
+    assert rc is None
+    assert "Fetching term frequency with params 424 -- trapper" in out
+    assert "Term frequency for trapper --> 4" in out
