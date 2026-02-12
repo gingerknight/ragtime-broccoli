@@ -10,6 +10,7 @@ import pickle
 import os
 import json
 from collections import Counter
+import math
 
 
 from helpers import (
@@ -138,6 +139,14 @@ class InvertedIndex:
         # sets num to 0 if term doesn't appear in Counter iterable
         num = self.term_frequencies[doc_id][token[0]]
         return num
+    
+    def calculate_idf(self, idx_cache, docmap_cache, term) -> float:
+        # calculate the idf using the index and docmap cache
+        token = normalize(term)[0]
+        num_docs = [*docmap_cache.keys()][-1]
+        occurance = idx_cache[token]
+        idf = math.log((int(num_docs) + 1) / (len(occurance) + 1))
+        return idf
 
     def _debug_cache(self) -> None:
         # For Dev: debug cache contents and structure

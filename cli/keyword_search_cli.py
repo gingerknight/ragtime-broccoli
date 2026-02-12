@@ -20,6 +20,9 @@ def main() -> None:
     term_frequency_parser.add_argument("id", type=int, help="Docuemnt ID in the Inverse Index cache")
     term_frequency_parser.add_argument("term", type=str, help="Search term you are lookin for")
 
+    inverse_doc_freq_parser = subparsers.add_parser("idf", help="Return the inverse document frequency value for a search term")
+    inverse_doc_freq_parser.add_argument("term", type=str, help="Search term to look for")
+
     args = parser.parse_args()
     # initialize inv object
     inv = InvertedIndex()
@@ -57,6 +60,10 @@ def main() -> None:
             print(f"Fetching term frequency with params {args.id} -- {args.term} ")
             num = inv.get_tf(args.id, args.term)
             print(f"Term frequency for {args.term} --> {num}")
+        case "idf":
+            idx_cache, docmap_cache, _ = InvertedIndex.load()
+            idf = inv.calculate_idf(idx_cache, docmap_cache, args.term)
+            print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
         case _:
             parser.print_help()
 
