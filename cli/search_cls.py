@@ -183,8 +183,8 @@ class InvertedIndex:
             raise InvalidTerm("Expected sinle word term, not multiple tokens")
         num_docs = len(self.docmap)
         occurance = self.index.get(token[0], set())
-        bm25 = math.log((int(num_docs) - len(occurance) + 0.5) / (len(occurance) + 0.5) + 1)
-        return bm25
+        bm25_idf = math.log((int(num_docs) - len(occurance) + 0.5) / (len(occurance) + 0.5) + 1)
+        return bm25_idf
 
     def get_bm25_tf(self, doc_id, term, k1=BM25_K1, b=BM25_B):
         # length normalization factor
@@ -197,6 +197,27 @@ class InvertedIndex:
         num = self.get_tf(doc_id, term)
         bm25_tf = (num * (k1 + 1)) / (num + k1 * length_norm)
         return bm25_tf
+
+    def bm25(self, doc_id, term) -> float:
+        # return true bm25 calculation with bm25_idf and bm25_tf
+        return self.get_bm25_tf(doc_id, term) * self.get_bm25_idf(term)
+
+    def bm25_search(self, query, limit=DEFAULT_MAX_TITLES):
+        result = []
+        tokens = normalize(query)
+        scores = {}  # doc_ids : total bm25 score
+        for doc_id in self.docmap.keys():
+            scores[doc_id] = 0
+            for token in tokens:
+                scores[doc_id] += self.bm25(doc_id, token)
+        # known algorithm for sortin dict by values
+        sorted_dict = {k: v for k, v in sorted(scores.items(), key=lambda item: item[1], reverse=True)}
+        # limit to just 5 items from the dictionary
+        for idx, k in enumerate(sorted_dict):
+            if idx == limit:
+                break
+            result.append((k, self.docmap[k]["title"], sorted_dict[k]))
+        return result
 
     def _debug_cache(self) -> None:
         # For Dev: debug cache contents and structure

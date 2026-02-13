@@ -39,6 +39,9 @@ def main() -> None:
     bm25_tf_parser.add_argument("k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter")
     bm25_tf_parser.add_argument("b", type=float, nargs="?", default=BM25_B, help="Tunable BM25 b parameter")
 
+    bm25search_parser = subparsers.add_parser("bm25search", help="Search movies using full BM25 scoring")
+    bm25search_parser.add_argument("query", type=str, help="Search query")
+
     args = parser.parse_args()
     inv = InvertedIndex()
     try:
@@ -47,7 +50,7 @@ def main() -> None:
         print(f"Unable to load data file...check your movies.json file: {e}")
         return 2
 
-    cache_commands = {"search", "load", "tf", "idf", "tfidf", "bm25idf", "bm25tf"}
+    cache_commands = {"search", "load", "tf", "idf", "tfidf", "bm25idf", "bm25tf", "bm25search"}
     if args.command in cache_commands:
         print("Loading cache files...")
         try:
@@ -89,6 +92,10 @@ def main() -> None:
         case "bm25tf":
             bm25tf = inv.get_bm25_tf(args.doc_id, args.term, args.k1, args.b)
             print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
+        case "bm25search":
+            bm_list = inv.bm25_search(args.query)
+            for bm_item in bm_list:
+                print(f"({bm_item[0]}) {bm_item[1]} - Score: {bm_item[2]:.2f}")
         case _:
             parser.print_help()
 
