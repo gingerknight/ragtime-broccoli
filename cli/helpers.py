@@ -1,30 +1,33 @@
 import json
+import string
 from typing import Any
 
-import string
 from nltk.stem import PorterStemmer
-
 
 DEFAULT_MAX_TITLES = 5
 
 INDEX_PATH = "./cache/index.pkl"
 DOCMAP_PATH = "./cache/docmap.pkl"
 TF_PATH = "./cache/term_frequencies.pkl"
+DOC_LENGTHS_PATH = "./cache/doc_lengths.pkl"
 
 MOVIES_PATH: str = "data/movies.json"
 STOP_PATH: str = "data/stopwords.txt"
 
+BM25_K1 = 1.5
+BM25_B = 0.75
+
 
 # load stop words from file
 def load_stopwords() -> set[str]:
-    with open(STOP_PATH, "r") as stopFile:
+    with open(STOP_PATH) as stopFile:
         return set(stopFile.read().splitlines())
 
 
 # load json movie data into dict
 def load_movies(movie_path: str = MOVIES_PATH) -> list[dict[str, Any]]:
     try:
-        with open(movie_path, "r") as movie_json:
+        with open(movie_path) as movie_json:
             payload = json.load(movie_json)
     except FileNotFoundError as e:
         raise FileNotFoundError(f"Missing file: {movie_path}") from e

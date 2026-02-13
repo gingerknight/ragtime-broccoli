@@ -2,8 +2,9 @@
 
 import argparse
 
-from search_cls import MovieSearch, InvertedIndex
 from errors.exception_handling import SearchEngineError
+from helpers import BM25_B, BM25_K1
+from search_cls import InvertedIndex, MovieSearch
 
 
 def main() -> None:
@@ -15,20 +16,30 @@ def main() -> None:
 
     subparsers.add_parser("build", help="Build Inverse index artifacts")
     subparsers.add_parser("load", help="Load pickle cache files for processed data")
-    
+
     term_frequency_parser = subparsers.add_parser("tf", help="Fetch term frequency in the related doc")
     term_frequency_parser.add_argument("id", type=int, help="Docuemnt ID in the Inverse Index cache")
     term_frequency_parser.add_argument("term", type=str, help="Search term you are lookin for")
 
-    inverse_doc_freq_parser = subparsers.add_parser("idf", help="Return the inverse document frequency value for a search term")
+    inverse_doc_freq_parser = subparsers.add_parser(
+        "idf", help="Return the inverse document frequency value for a search term"
+    )
     inverse_doc_freq_parser.add_argument("term", type=str, help="Search term to look for")
 
     tf_idf_parser = subparsers.add_parser("tfidf", help="Caclulate the TF-IDF for a document and term")
     tf_idf_parser.add_argument("id", type=int, help="Document ID to search")
     tf_idf_parser.add_argument("term", type=str, help="Search terms to calculate the TF-IDFs with")
 
+    bm25_idf_parser = subparsers.add_parser("bm25idf", help="Get BM25 IDF score for a given term")
+    bm25_idf_parser.add_argument("term", type=str, help="Term to get BM25 IDF score for")
+
+    bm25_tf_parser = subparsers.add_parser("bm25tf", help="Get BM25 TF score for a given document ID and term")
+    bm25_tf_parser.add_argument("doc_id", type=int, help="Document ID")
+    bm25_tf_parser.add_argument("term", type=str, help="Term to get BM25 TF score for")
+    bm25_tf_parser.add_argument("k1", type=float, nargs="?", default=BM25_K1, help="Tunable BM25 K1 parameter")
+    bm25_tf_parser.add_argument("b", type=float, nargs="?", default=BM25_B, help="Tunable BM25 b parameter")
+
     args = parser.parse_args()
-    # initialize inv object
     inv = InvertedIndex()
     try:
         ms = MovieSearch.from_file()
@@ -36,19 +47,19 @@ def main() -> None:
         print(f"Unable to load data file...check your movies.json file: {e}")
         return 2
 
+    cache_commands = {"search", "load", "tf", "idf", "tfidf", "bm25idf", "bm25tf"}
+    if args.command in cache_commands:
+        print("Loading cache files...")
+        try:
+            inv = InvertedIndex.from_cache()
+        except SearchEngineError as e:
+            print(f"Error: {e}")
+            return 2
+
     match args.command:
         case "search":
-            print("Loading cache files...")
-            try:
-                idx_cache, docmap_cache, tf_cache = InvertedIndex.load()
-            except SearchEngineError as e:
-                print(f"Error: {e}")
-                return 2
             print(f"Searching for: {args.query}")
-            # ms.sample_data()
-            titles = ms.find_titles(
-                args.query, idx_cache=idx_cache, docmap_cache=docmap_cache
-            )
+            titles = ms.find_titles(args.query, idx_cache=inv.index, docmap_cache=inv.docmap)
             ms.print_results(titles)
         case "build":
             try:
@@ -58,25 +69,28 @@ def main() -> None:
                 # print(f"First document for token 'merida' = {merida_list[0]}")
             except Exception as e:
                 print(f"Unable to build index and/or docmap: {e}")
+        case "load":
+            print("Cache loaded successfully.")
         case "tf":
-            _, _, tf_cache = InvertedIndex.load()
-            inv.term_frequencies = tf_cache
             print(f"Fetching term frequency with params {args.id} -- {args.term} ")
             num = inv.get_tf(args.id, args.term)
             print(f"Term frequency for {args.term} --> {num}")
         case "idf":
-            idx_cache, docmap_cache, _ = InvertedIndex.load()
-            idf = inv.calculate_idf(idx_cache, docmap_cache, args.term)
+            idf = inv.calculate_idf(args.term)
             print(f"Inverse document frequency of '{args.term}': {idf:.2f}")
         case "tfidf":
-            idx_cache, docmap_cache, tf_cache = InvertedIndex.load()
-            inv.term_frequencies = tf_cache
             tf = inv.get_tf(args.id, args.term)
-            idf = inv.calculate_idf(idx_cache, docmap_cache, args.term)
+            idf = inv.calculate_idf(args.term)
             tf_idf = tf * idf
             print(f"TF-IDF score of '{args.term}' in document '{args.id}': {tf_idf:.2f}")
+        case "bm25idf":
+            bm25idf = inv.get_bm25_idf(args.term)
+            print(f"BM25 IDF score of '{args.term}': {bm25idf:.2f}")
+        case "bm25tf":
+            bm25tf = inv.get_bm25_tf(args.doc_id, args.term, args.k1, args.b)
+            print(f"BM25 TF score of '{args.term}' in document '{args.doc_id}': {bm25tf:.2f}")
         case _:
-            parser.print_help(args.id, args.term)
+            parser.print_help()
 
 
 if __name__ == "__main__":

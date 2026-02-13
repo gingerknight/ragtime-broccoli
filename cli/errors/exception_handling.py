@@ -17,5 +17,6 @@ class IndexBuildError(SearchEngineError):
 class CacheIOError(SearchEngineError):
     pass
 
+
 class InvalidTerm(SearchEngineError):
     pass

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import pytest
+from errors.exception_handling import DataLoadError, IndexBuildError, InvalidTerm
 
 from cli.search_cls import InvertedIndex, MovieSearch
-from errors.exception_handling import DataLoadError, IndexBuildError, InvalidTerm
 
 
 def make_movies():
@@ -104,3 +104,14 @@ def test_get_tf_raises_for_multiword_term(monkeypatch):
 
     with pytest.raises(InvalidTerm):
         inv.get_tf(1, "one two")
+
+
+def test_get_bm25_tf_uses_doc_lengths_for_length_normalization(monkeypatch):
+    inv = InvertedIndex()
+    inv.doc_lengths = {1: 10, 2: 20}
+
+    monkeypatch.setattr(inv, "get_tf", lambda doc_id, term: 4)
+
+    score = inv.get_bm25_tf(1, "star")
+
+    assert score > 0
