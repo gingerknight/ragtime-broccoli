@@ -103,6 +103,22 @@ class InvertedIndex:
         inv.doc_lengths = doclength_cache
         return inv
 
+    @staticmethod
+    def load():
+        # Load pickle cache files from disk
+        try:
+            with open(INDEX_PATH, "rb") as ifp:
+                index_cache = pickle.load(ifp)
+            with open(DOCMAP_PATH, "rb") as rfp:
+                docmap_cache = pickle.load(rfp)
+            with open(TF_PATH, "rb") as tfp:
+                tf_cache = pickle.load(tfp)
+            with open(DOC_LENGTHS_PATH, "rb") as dfp:
+                doclength_cache = pickle.load(dfp)
+        except FileNotFoundError as e:
+            raise DataLoadError(f"Unable to load cache files: {e}") from e
+        return index_cache, docmap_cache, tf_cache, doclength_cache
+
     def get_documents(self, term: str) -> list[int]:
         # Get set of doc_ids for given token
         # return as a list sorted ascending
@@ -227,19 +243,3 @@ class InvertedIndex:
             json.dump(index_for_json, ifp, ensure_ascii=False, indent=2)
         with open("./cache/docmap.json", "w") as dfp:
             json.dump(self.docmap, dfp, ensure_ascii=False, indent=2)
-
-    @staticmethod
-    def load():
-        # Load pickle cache files from disk
-        try:
-            with open(INDEX_PATH, "rb") as ifp:
-                index_cache = pickle.load(ifp)
-            with open(DOCMAP_PATH, "rb") as rfp:
-                docmap_cache = pickle.load(rfp)
-            with open(TF_PATH, "rb") as tfp:
-                tf_cache = pickle.load(tfp)
-            with open(DOC_LENGTHS_PATH, "rb") as dfp:
-                doclength_cache = pickle.load(dfp)
-        except FileNotFoundError as e:
-            raise DataLoadError(f"Unable to load cache files: {e}") from e
-        return index_cache, docmap_cache, tf_cache, doclength_cache
