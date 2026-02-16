@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from typing import List
 
 import numpy as np
 from helpers import EMBEDDING_CACHE, load_movies
@@ -51,6 +52,15 @@ def embed_query_text(query: str):
     print(f"First 5 dimensions: {embedding[:5]}")
     print(f"Shape: {embedding.shape}")
 
+def cosine_similarity(vec1, vec2):
+    dot_product = np.dot(vec1, vec2)
+    norm1 = np.linalg.norm(vec1)
+    norm2 = np.linalg.norm(vec2)
+
+    if norm1 == 0 or norm2 == 0:
+        return 0.0
+
+    return dot_product / (norm1 * norm2)
 
 
 class SemanticSearch:
@@ -66,8 +76,28 @@ class SemanticSearch:
         self.embeddings = None
         self.documents = None
         self.document_map = {}  # emtpy dict
+    
+    def search(self, query: str, limit=5):
+        embed_similarity = [] # list of tuples storing similiary_score, document
+        i = 0
+        if not self.embeddings.any():
+            raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
+        query_embedding = self.generate_embedding(query)
+        # making a pretty big assumption the data is created in order like movies.json for embedding...
+        # need to look at fixing this later for other docs and not groomed json...
+        for doc_id, vector in zip(self.documents, self.embeddings):
+            # print(f"doc_id troulbeshooting: {doc_id}")
+            embed_similarity.append((
+                cosine_similarity(query_embedding, vector), 
+                doc_id["title"], 
+                doc_id["description"]
+                ))
+        embed_similarity_sorted = sorted(embed_similarity, key=lambda tup: tup[0], reverse=True)
+        return embed_similarity_sorted[:limit]
+        # print(embed_similarity_sorted[:limit])
 
-    def build_embeddings(self, documents):
+
+    def build_embeddings(self, documents: List):
         # documents is a list of dict (movies.json?)
         # each document, add a key id of the doc and value is the doc values itself
         if not (self.documents or self.document_map):
@@ -100,7 +130,7 @@ class SemanticSearch:
         self.documents = documents
         for doc in self.documents:
             self.document_map[doc["id"]] = doc
-            doc_list.append(f"{doc['title']} {doc['description']}")
+            doc_list.append( f"{doc['title']} {doc['description']}")
         file_path = Path(EMBEDDING_CACHE)
         if file_path.exists():
             self.embeddings = self.load()
