@@ -40,6 +40,18 @@ def verify_embeddings():
     print(f"Number of docs:   {len(documents)}")
     print(f"Embeddings shape: {model.embeddings.shape[0]} vectors in {model.embeddings.shape[1]} dimensions")
 
+    
+def embed_query_text(query: str):
+    # create instance of SemSearch
+    # call generate embedding
+    # print info about query
+    model = SemanticSearch()
+    embedding = model.generate_embedding(query)
+    print(f"Query: {query}")
+    print(f"First 5 dimensions: {embedding[:5]}")
+    print(f"Shape: {embedding.shape}")
+
+
 
 class SemanticSearch:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", cache_dir: str | Path = DEFAULT_CACHE_DIR):
@@ -95,7 +107,7 @@ class SemanticSearch:
         else:
             self.embeddings = self.build_embeddings(self.documents)
 
-    def generate_embedding(self, text: str):
+    def generate_embedding(self, text: str) -> np.typing.NDArray:
         if not text or text.isspace():
             raise ValueError("Missing text")
         embedding = self.model.encode([text])
