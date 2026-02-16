@@ -11,6 +11,8 @@ DOCMAP_PATH = "./cache/docmap.pkl"
 TF_PATH = "./cache/term_frequencies.pkl"
 DOC_LENGTHS_PATH = "./cache/doc_lengths.pkl"
 
+EMBEDDING_CACHE = "./cache/movie_embeddings.npy"
+
 MOVIES_PATH: str = "data/movies.json"
 STOP_PATH: str = "data/stopwords.txt"
 
