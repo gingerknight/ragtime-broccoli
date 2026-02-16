@@ -2,8 +2,8 @@
 
 import argparse
 
-from lib.semantic_search import embed_text, verify_embeddings, verify_model, embed_query_text, SemanticSearch
 from helpers import load_movies
+from lib.semantic_search import SemanticSearch, embed_query_text, embed_text, verify_embeddings, verify_model
 
 
 def main():
@@ -23,8 +23,10 @@ def main():
     embed_query.add_argument("query", type=str, help="User string query to embed and create embedding vector")
 
     search = subparsers.add_parser("search", help="Seamtic search the documents (movies.json)")
-    search.add_argument("user_query", type=str, help="String query to search via embedding and semantic vector calculations")
-    search.add_argument("--limit", type=int, nargs='?', default=5, help="Limit return to N values")
+    search.add_argument(
+        "user_query", type=str, help="String query to search via embedding and semantic vector calculations"
+    )
+    search.add_argument("--limit", type=int, nargs="?", default=5, help="Limit return to N values")
 
     args = parser.parse_args()
 
@@ -43,7 +45,7 @@ def main():
             sem_search.load_or_create_embeddings(movies)
             result_list = sem_search.search(args.user_query, args.limit)
             for i in range(len(result_list)):
-                print(f"{i+1}. {result_list[i][1]} (score: {result_list[i][0]:.2f})\n\t{result_list[i][2][:100]}...")
+                print(f"{i + 1}. {result_list[i][1]} (score: {result_list[i][0]:.2f})\n\t{result_list[i][2][:100]}...")
         case _:
             parser.print_help()
 
