@@ -3,7 +3,7 @@
 import argparse
 
 from helpers import load_movies
-from lib.semantic_search import SemanticSearch, embed_query_text, embed_text, verify_embeddings, verify_model
+from lib.semantic_search import SemanticSearch, embed_query_text, embed_text, verify_embeddings, verify_model, size_defined_chunking, pretty_display_chunks
 
 
 def main():
@@ -28,6 +28,11 @@ def main():
     )
     search.add_argument("--limit", type=int, nargs="?", default=5, help="Limit return to N values")
 
+    chunking = subparsers.add_parser("chunk", help="Chunk text into N sized chunks")
+    chunking.add_argument("text", type=str, help="Text to chunk")
+    chunking.add_argument("--chunk-size", type=int, nargs="?", default=200, help="Number represented as an int of the chunk size")
+    chunking.add_argument("--overlap", type=int, nargs="?", default=0, help="Overlap of words between the chunks to preserve word meaning between chunks")
+
     args = parser.parse_args()
 
     match args.command:
@@ -46,6 +51,9 @@ def main():
             result_list = sem_search.search(args.user_query, args.limit)
             for i in range(len(result_list)):
                 print(f"{i + 1}. {result_list[i][1]} (score: {result_list[i][0]:.2f})\n\t{result_list[i][2][:100]}...")
+        case "chunk":
+            chunks = size_defined_chunking(args.text, args.chunk_size, args.overlap)
+            pretty_display_chunks(chunks, len(args.text))
         case _:
             parser.print_help()
 

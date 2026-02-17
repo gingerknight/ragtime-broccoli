@@ -5,6 +5,7 @@ import numpy as np
 from helpers import EMBEDDING_CACHE, load_movies
 from sentence_transformers import SentenceTransformer
 from transformers.utils import logging as hf_logging
+from typing import List
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CACHE_DIR = PROJECT_ROOT / "data" / ".cache" / "huggingface"
@@ -62,6 +63,33 @@ def cosine_similarity(vec1, vec2):
 
     return dot_product / (norm1 * norm2)
 
+def size_defined_chunking(text: str, chunk_size: int, overlap: int) -> List[str]:
+    # chunk text into size N chunks and return a list of the chunks
+    chunks = []
+    words = text.split()
+    if overlap < 0 or overlap >= chunk_size:
+        raise ValueError("overlap must be >= 0 and < chunk_size")
+    i = 0
+    step = chunk_size - overlap
+    while i < len(words):
+        chunks_words = words[i : i + chunk_size]
+        # chunk_size = 5, overlap = 2, step = 3
+        # remaining only 2 words, we alreadyt captured previously break
+        # also do not break if we haven't captured first chunks array
+        if chunks and len(chunks_words) <= overlap:
+            break
+        chunks.append(" ".join(chunks_words))
+        i += step
+    # for i in range(0, len(words), chunk_size):
+        # chunks.append(" ".join(words[i:i+chunk_size]))
+    return chunks
+
+def pretty_display_chunks(chunks: List[str], text_length: int) -> None:
+    # Pretty print the list of chunks in specific format
+    print(f"Chunking {text_length} characters")
+    for i, word in enumerate(chunks):
+        print(f"{i+1}. {word}")
+
 
 class SemanticSearch:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", cache_dir: str | Path = DEFAULT_CACHE_DIR):
@@ -79,7 +107,7 @@ class SemanticSearch:
 
     def search(self, query: str, limit=5):
         embed_similarity = []  # list of tuples storing similiary_score, document
-        if not self.embeddings.any():
+        if not self.embeddings is None:
             raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
         query_embedding = self.generate_embedding(query)
         # making a pretty big assumption the data is created in order like movies.json for embedding...
