@@ -33,6 +33,11 @@ def main():
     chunking.add_argument("--chunk-size", type=int, nargs="?", default=200, help="Number represented as an int of the chunk size")
     chunking.add_argument("--overlap", type=int, nargs="?", default=0, help="Overlap of words between the chunks to preserve word meaning between chunks")
 
+    semantic_chunking = subparsers.add_parser("semantic_chunk", help="Semantic chunking: split text on sentecnes")
+    semantic_chunking.add_argument("text", type=str, help="Text to chunk")
+    semantic_chunking.add_argument("--max-chunk-size", type=int, nargs="?", default=4, help="number of sentences per chunk")
+    semantic_chunking.add_argument("--overlap", type=int, nargs="?", default=0, help="number of sentences to overlap for each chunk")
+
     args = parser.parse_args()
 
     match args.command:
@@ -54,6 +59,9 @@ def main():
         case "chunk":
             chunks = size_defined_chunking(args.text, args.chunk_size, args.overlap)
             pretty_display_chunks(chunks, len(args.text))
+        case "semantic_chunk":
+            chunks = size_defined_chunking(args.text, args.max_chunk_size, args.overlap, semantic=True)
+            pretty_display_chunks(chunks, len(args.text), semantic=True)
         case _:
             parser.print_help()
 

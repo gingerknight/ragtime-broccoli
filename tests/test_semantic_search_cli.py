@@ -137,6 +137,42 @@ def test_main_chunk_uses_chunking_and_pretty_display(monkeypatch):
     assert seen["display"] == (["a b", "b c", "c d"], len("a b c d"))
 
 
+def test_main_semantic_chunk_prints_semantic_format(monkeypatch, capsys):
+    text = "First sentence here. Second sentence here. Third sentence here. Fourth sentence here."
+    seen = {"args": None}
+
+    monkeypatch.setattr(
+        cli_mod.argparse.ArgumentParser,
+        "parse_args",
+        lambda _self: Namespace(command="semantic_chunk", text=text, max_chunk_size=2, overlap=1),
+    )
+
+    def _fake_chunking(input_text, chunk_size, overlap, semantic=False):
+        seen["args"] = (input_text, chunk_size, overlap, semantic)
+        return [
+            "First sentence here. Second sentence here.",
+            "Second sentence here. Third sentence here.",
+            "Third sentence here. Fourth sentence here.",
+        ]
+
+    monkeypatch.setattr(cli_mod, "size_defined_chunking", _fake_chunking)
+
+    rc = cli_mod.main()
+
+    out_lines = capsys.readouterr().out.splitlines()
+    assert rc is None
+    assert seen["args"] == (text, 2, 1, True)
+    assert out_lines[0] in {
+        f"Chunking {len(text)} characters",
+        f"Semantically chunking {len(text)} characters",
+    }
+    assert out_lines[1:] == [
+        "1. First sentence here. Second sentence here.",
+        "2. Second sentence here. Third sentence here.",
+        "3. Third sentence here. Fourth sentence here.",
+    ]
+
+
 def test_main_unknown_command_prints_help(monkeypatch):
     printed = {"count": 0}
 

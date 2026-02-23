@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+import re
 
 import numpy as np
 from helpers import EMBEDDING_CACHE, load_movies
@@ -63,10 +64,10 @@ def cosine_similarity(vec1, vec2):
 
     return dot_product / (norm1 * norm2)
 
-def size_defined_chunking(text: str, chunk_size: int, overlap: int) -> List[str]:
+def size_defined_chunking(text: str, chunk_size: int, overlap: int, semantic:bool=False) -> List[str]:
     # chunk text into size N chunks and return a list of the chunks
     chunks = []
-    words = text.split()
+    words = re.split(r"(?<=[.!?])\s+", text) if semantic else text.split()
     if overlap < 0 or overlap >= chunk_size:
         raise ValueError("overlap must be >= 0 and < chunk_size")
     i = 0
@@ -84,9 +85,10 @@ def size_defined_chunking(text: str, chunk_size: int, overlap: int) -> List[str]
         # chunks.append(" ".join(words[i:i+chunk_size]))
     return chunks
 
-def pretty_display_chunks(chunks: List[str], text_length: int) -> None:
+def pretty_display_chunks(chunks: List[str], text_length: int, semantic:bool=False) -> None:
     # Pretty print the list of chunks in specific format
-    print(f"Chunking {text_length} characters")
+    preamble = "Semantically chunking" if semantic else "Chunking"
+    print(f"{preamble} {text_length} characters")
     for i, word in enumerate(chunks):
         print(f"{i+1}. {word}")
 

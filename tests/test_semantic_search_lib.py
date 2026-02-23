@@ -47,6 +47,33 @@ def test_size_defined_chunking_with_overlap_and_guardrails():
         sem_mod.size_defined_chunking(text, chunk_size=3, overlap=-1)
 
 
+def test_semantic_chunking_groups_sentences_and_applies_overlap():
+    text = (
+        "Ted is a 2012 comedy film directed by Seth MacFarlane. "
+        "The story follows John Bennett and his magical teddy bear. "
+        "The film explores themes of friendship and growing up. "
+        "John must choose between his relationship and Ted."
+    )
+
+    chunks = sem_mod.size_defined_chunking(text, chunk_size=2, overlap=1, semantic=True)
+
+    assert chunks == [
+        "Ted is a 2012 comedy film directed by Seth MacFarlane. The story follows John Bennett and his magical teddy bear.",
+        "The story follows John Bennett and his magical teddy bear. The film explores themes of friendship and growing up.",
+        "The film explores themes of friendship and growing up. John must choose between his relationship and Ted.",
+    ]
+
+
+def test_semantic_chunking_rejects_invalid_overlap():
+    text = "One. Two. Three."
+
+    with pytest.raises(ValueError):
+        sem_mod.size_defined_chunking(text, chunk_size=2, overlap=2, semantic=True)
+
+    with pytest.raises(ValueError):
+        sem_mod.size_defined_chunking(text, chunk_size=2, overlap=-1, semantic=True)
+
+
 def test_pretty_display_chunks_prints_expected_format(capsys):
     sem_mod.pretty_display_chunks(["a b", "c d"], text_length=7)
     out = capsys.readouterr().out.splitlines()
