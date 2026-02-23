@@ -1,12 +1,12 @@
+import json
 import os
-from pathlib import Path
 import re
+from pathlib import Path
 
 import numpy as np
-from helpers import EMBEDDING_CACHE, load_movies
+from helpers import CHUNK_EMBEDDINGS_CACHE, CHUNK_METADATA_JSON, EMBEDDING_CACHE, load_movies
 from sentence_transformers import SentenceTransformer
 from transformers.utils import logging as hf_logging
-from typing import List
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CACHE_DIR = PROJECT_ROOT / "data" / ".cache" / "huggingface"
@@ -64,7 +64,8 @@ def cosine_similarity(vec1, vec2):
 
     return dot_product / (norm1 * norm2)
 
-def size_defined_chunking(text: str, chunk_size: int, overlap: int, semantic:bool=False) -> List[str]:
+
+def size_defined_chunking(text: str, chunk_size: int, overlap: int, semantic: bool = False) -> list[str]:
     # chunk text into size N chunks and return a list of the chunks
     chunks = []
     words = re.split(r"(?<=[.!?])\s+", text) if semantic else text.split()
@@ -82,15 +83,16 @@ def size_defined_chunking(text: str, chunk_size: int, overlap: int, semantic:boo
         chunks.append(" ".join(chunks_words))
         i += step
     # for i in range(0, len(words), chunk_size):
-        # chunks.append(" ".join(words[i:i+chunk_size]))
+    # chunks.append(" ".join(words[i:i+chunk_size]))
     return chunks
 
-def pretty_display_chunks(chunks: List[str], text_length: int, semantic:bool=False) -> None:
+
+def pretty_display_chunks(chunks: list[str], text_length: int, semantic: bool = False) -> None:
     # Pretty print the list of chunks in specific format
     preamble = "Semantically chunking" if semantic else "Chunking"
     print(f"{preamble} {text_length} characters")
     for i, word in enumerate(chunks):
-        print(f"{i+1}. {word}")
+        print(f"{i + 1}. {word}")
 
 
 class SemanticSearch:
@@ -109,7 +111,7 @@ class SemanticSearch:
 
     def search(self, query: str, limit=5):
         embed_similarity = []  # list of tuples storing similiary_score, document
-        if not self.embeddings is None:
+        if self.embeddings is not None:
             raise ValueError("No embeddings loaded. Call `load_or_create_embeddings` first.")
         query_embedding = self.generate_embedding(query)
         # making a pretty big assumption the data is created in order like movies.json for embedding...
@@ -133,20 +135,20 @@ class SemanticSearch:
                 self.document_map[doc["id"]] = doc
                 doc_list.append(f"{doc['title']} {doc['description']}")
             self.embeddings = self.model.encode(doc_list, show_progress_bar=True)
-            self.save()
+            self.save(EMBEDDING_CACHE)
             return self.embeddings
 
-    def save(self) -> None:
+    def save(self, path) -> None:
         # use np.save methods to write files
         if not os.path.isdir("./cache"):
             os.mkdir("./cache")
-        with open(EMBEDDING_CACHE, "wb") as efp:
+        with open(path, "wb") as efp:
             np.save(efp, self.embeddings)
 
     @staticmethod
-    def load():
+    def load(path):
         # Load npy cache files from disk
-        with open(EMBEDDING_CACHE, "rb") as efp:
+        with open(path, "rb") as efp:
             embed_cache = np.load(efp)
         return embed_cache
 
@@ -159,7 +161,7 @@ class SemanticSearch:
             doc_list.append(f"{doc['title']} {doc['description']}")
         file_path = Path(EMBEDDING_CACHE)
         if file_path.exists():
-            self.embeddings = self.load()
+            self.embeddings = self.load(EMBEDDING_CACHE)
         else:
             self.embeddings = self.build_embeddings(self.documents)
 
@@ -168,3 +170,76 @@ class SemanticSearch:
             raise ValueError("Missing text")
         embedding = self.model.encode([text])
         return embedding[0]
+
+
+class ChunkedSemanticSearch(SemanticSearch):
+    def __init__(self, model_name="all-MiniLM-L6-v2") -> None:
+        super().__init__(model_name)
+        self.chunk_embeddings = None
+        self.chunk_metadata = None
+
+    def build_chunk_embeddings(self, documents: list):
+        # documents is a list of dict (movies.json?)
+        # each document, add a key id of the doc and value is the doc values itself
+        # print(f"Building Chunk embeddings")
+        chunk_metadata_list = []
+        all_chunks = []
+        self.documents = documents
+        for idx, doc in enumerate(self.documents):
+            # skip if missing descritption (important for semantic embedding)
+            if not doc["description"]:
+                # print(f"Skipping, no description")
+                continue
+            self.document_map[doc["id"]] = doc
+            # chunk description
+            doc_chunks = size_defined_chunking(doc["description"], 4, 1, True)
+            num_chunks = len(doc_chunks)
+            # print(f"Number of chunks in doc description: {num_chunks}")
+            for ch_idx, _ in enumerate(doc_chunks):
+                chunk_metadata_list.append({"movie_idx": idx, "chunk_idx": ch_idx, "total_chunks": num_chunks})
+            all_chunks.extend(doc_chunks)
+        self.chunk_embeddings = self.model.encode(all_chunks, show_progress_bar=True)
+        self.chunk_save(CHUNK_EMBEDDINGS_CACHE)
+        self.chunk_metadata = chunk_metadata_list
+        self.save_metadata(all_chunks)
+        return self.chunk_embeddings
+
+    def load_or_create_chunk_embeddings(self, documents: list[dict]) -> np.ndarray:
+        # build embeddings only once, load from disk if exists
+        self.documents = documents
+        for doc in self.documents:
+            self.document_map[doc["id"]] = doc
+        embed_path = Path(CHUNK_EMBEDDINGS_CACHE)
+        metadata_path = Path(CHUNK_METADATA_JSON)
+        if embed_path.exists() and metadata_path.exists():
+            self.chunk_embeddings = self.chunk_load(CHUNK_EMBEDDINGS_CACHE)
+            self.chunk_metadata = self.load_metadata(CHUNK_METADATA_JSON)
+            return self.chunk_embeddings
+        else:
+            return self.build_chunk_embeddings(self.documents)
+
+    def save_metadata(self, chunk_list: list):
+        # use np.save methods to write files
+        if not os.path.isdir("./cache"):
+            os.mkdir("./cache")
+        with open(CHUNK_METADATA_JSON, "w") as fp:
+            # save chunk metadata
+            json.dump({"chunks": self.chunk_metadata, "total_chunks": len(chunk_list)}, fp, indent=2)
+
+    def load_metadata(self, json_path: str):
+        with open(json_path) as json_fp:
+            return json.load(json_fp)
+
+    def chunk_save(self, path) -> None:
+        # use np.save methods to write files
+        if not os.path.isdir("./cache"):
+            os.mkdir("./cache")
+        with open(path, "wb") as efp:
+            np.save(efp, self.chunk_embeddings)
+
+    @staticmethod
+    def chunk_load(path):
+        # Load npy cache files from disk
+        with open(path, "rb") as efp:
+            embed_cache = np.load(efp)
+        return embed_cache

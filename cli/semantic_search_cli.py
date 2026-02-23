@@ -3,7 +3,16 @@
 import argparse
 
 from helpers import load_movies
-from lib.semantic_search import SemanticSearch, embed_query_text, embed_text, verify_embeddings, verify_model, size_defined_chunking, pretty_display_chunks
+from lib.semantic_search import (
+    ChunkedSemanticSearch,
+    SemanticSearch,
+    embed_query_text,
+    embed_text,
+    pretty_display_chunks,
+    size_defined_chunking,
+    verify_embeddings,
+    verify_model,
+)
 
 
 def main():
@@ -11,6 +20,7 @@ def main():
 
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
     subparsers.add_parser("verify", help="Verify the embedding model loaded")
+    subparsers.add_parser("embed_chunks", help="Load or create semantic chunk embeddins")
 
     embedding = subparsers.add_parser("embed_text", help="Command to calculate and return embedding value of string")
     embedding.add_argument("input", type=str, help="Text top caluclate embedding from")
@@ -30,13 +40,25 @@ def main():
 
     chunking = subparsers.add_parser("chunk", help="Chunk text into N sized chunks")
     chunking.add_argument("text", type=str, help="Text to chunk")
-    chunking.add_argument("--chunk-size", type=int, nargs="?", default=200, help="Number represented as an int of the chunk size")
-    chunking.add_argument("--overlap", type=int, nargs="?", default=0, help="Overlap of words between the chunks to preserve word meaning between chunks")
+    chunking.add_argument(
+        "--chunk-size", type=int, nargs="?", default=200, help="Number represented as an int of the chunk size"
+    )
+    chunking.add_argument(
+        "--overlap",
+        type=int,
+        nargs="?",
+        default=0,
+        help="Overlap of words between the chunks to preserve word meaning between chunks",
+    )
 
     semantic_chunking = subparsers.add_parser("semantic_chunk", help="Semantic chunking: split text on sentecnes")
     semantic_chunking.add_argument("text", type=str, help="Text to chunk")
-    semantic_chunking.add_argument("--max-chunk-size", type=int, nargs="?", default=4, help="number of sentences per chunk")
-    semantic_chunking.add_argument("--overlap", type=int, nargs="?", default=0, help="number of sentences to overlap for each chunk")
+    semantic_chunking.add_argument(
+        "--max-chunk-size", type=int, nargs="?", default=4, help="number of sentences per chunk"
+    )
+    semantic_chunking.add_argument(
+        "--overlap", type=int, nargs="?", default=0, help="number of sentences to overlap for each chunk"
+    )
 
     args = parser.parse_args()
 
@@ -62,6 +84,12 @@ def main():
         case "semantic_chunk":
             chunks = size_defined_chunking(args.text, args.max_chunk_size, args.overlap, semantic=True)
             pretty_display_chunks(chunks, len(args.text), semantic=True)
+        case "embed_chunks":
+            sem_chunk_search = ChunkedSemanticSearch()
+            movies = load_movies()
+            embeddings = sem_chunk_search.load_or_create_chunk_embeddings(movies)
+            print(f"Generated {len(embeddings)} chunked embeddings")
+
         case _:
             parser.print_help()
 
