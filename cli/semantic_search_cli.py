@@ -12,6 +12,7 @@ from lib.semantic_search import (
     size_defined_chunking,
     verify_embeddings,
     verify_model,
+    searching_chunks
 )
 
 
@@ -60,6 +61,10 @@ def main():
         "--overlap", type=int, nargs="?", default=0, help="number of sentences to overlap for each chunk"
     )
 
+    search_chunked = subparsers.add_parser("search_chunked", help="String to query with")
+    search_chunked.add_argument("query", type=str, help="Search query for semantic chunking search")
+    search_chunked.add_argument("--limit", type=int, nargs="?", default=10, help="Number of results to limit")
+
     args = parser.parse_args()
 
     match args.command:
@@ -89,7 +94,10 @@ def main():
             movies = load_movies()
             embeddings = sem_chunk_search.load_or_create_chunk_embeddings(movies)
             print(f"Generated {len(embeddings)} chunked embeddings")
-
+            results = sem_chunk_search.search_chunks("superhero action movie")
+            print(results)
+        case "search_chunked":
+            searching_chunks(args.query, args.limit)
         case _:
             parser.print_help()
 

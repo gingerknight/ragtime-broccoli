@@ -94,6 +94,15 @@ def pretty_display_chunks(chunks: list[str], text_length: int, semantic: bool = 
     for i, word in enumerate(chunks):
         print(f"{i + 1}. {word}")
 
+def searching_chunks(query: str, limit: int = 10):
+    chunk_sem = ChunkedSemanticSearch()
+    movies = load_movies()
+    embeddings = chunk_sem.load_or_create_chunk_embeddings(movies)
+    result = chunk_sem.search_chunks(query, limit)
+    for i, result_dict in enumerate(result):
+            print(f"\n{i}. {result_dict["title"]} (score: {result_dict["score"]:.4f})")
+            print(f"   {result_dict["document"]}...")
+
 
 class SemanticSearch:
     def __init__(self, model_name: str = "all-MiniLM-L6-v2", cache_dir: str | Path = DEFAULT_CACHE_DIR):
@@ -217,6 +226,55 @@ class ChunkedSemanticSearch(SemanticSearch):
             return self.chunk_embeddings
         else:
             return self.build_chunk_embeddings(self.documents)
+        
+    def search_chunks(self, query: str, limit: int = 10):
+        query_embedding = self.generate_embedding(query)
+        chunk_metadata = self.chunk_metadata["chunks"]
+        # Build chunk-level scores.
+        chunk_scores = []
+        for i, chunk_embedding in enumerate(self.chunk_embeddings):
+            chunk_meta = chunk_metadata[i]
+            score = cosine_similarity(query_embedding, chunk_embedding)
+            chunk_scores.append(
+                {
+                    "chunk_idx": chunk_meta["chunk_idx"],
+                    "movie_idx": chunk_meta["movie_idx"],
+                    "score": score,
+                }
+            )
+        # Keep only the best chunk score per movie.
+        movie_scores = {}
+        for chunk_score in chunk_scores:
+            movie_idx = chunk_score["movie_idx"]
+            score = chunk_score["score"]
+            if movie_idx not in movie_scores or score > movie_scores[movie_idx]:
+                movie_scores[movie_idx] = score
+        # Sort movie scores from highest to lowest and apply limit.
+        sorted_movie_scores = sorted(movie_scores.items(), key=lambda item: item[1], reverse=True)
+        # format return to be like 
+        """
+        {
+        "id": doc_id,
+        "title": title,
+        "document": document[:100],
+        "score": round(score, SCORE_PRECISION),
+        "metadata": metadata or {}
+        }
+        """
+        results = []
+        for i in range(0,limit):
+            val = {
+                "id": self.documents[sorted_movie_scores[i][0]]["id"],
+                "title": self.documents[sorted_movie_scores[i][0]]["title"],
+                "document": self.documents[sorted_movie_scores[i][0]]["description"][:100],
+                "score": round(sorted_movie_scores[i][1], 4),
+                "metadata": {}
+            }
+            # print(val)
+            results.append(val)
+        return results
+        
+
 
     def save_metadata(self, chunk_list: list):
         # use np.save methods to write files
