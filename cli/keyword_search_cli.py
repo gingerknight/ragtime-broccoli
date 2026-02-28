@@ -3,8 +3,8 @@
 import argparse
 
 from errors.exception_handling import SearchEngineError
-from helpers import BM25_B, BM25_K1
-from search_cls import InvertedIndex, MovieSearch
+from lib.helpers import BM25_B, BM25_K1
+from lib.keyword_search import InvertedIndex, MovieSearch
 
 
 def main() -> None:

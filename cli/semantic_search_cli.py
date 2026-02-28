@@ -2,7 +2,7 @@
 
 import argparse
 
-from helpers import load_movies
+from lib.helpers import load_movies
 from lib.semantic_search import (
     ChunkedSemanticSearch,
     SemanticSearch,

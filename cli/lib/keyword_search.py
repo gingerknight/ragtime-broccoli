@@ -18,7 +18,7 @@ from errors.exception_handling import (
     IndexBuildError,
     InvalidTerm,
 )
-from helpers import (
+from .helpers import (
     BM25_B,
     BM25_K1,
     DEFAULT_MAX_TITLES,

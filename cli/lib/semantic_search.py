@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 
 import numpy as np
-from helpers import CHUNK_EMBEDDINGS_CACHE, CHUNK_METADATA_JSON, EMBEDDING_CACHE, load_movies
+from .helpers import CHUNK_EMBEDDINGS_CACHE, CHUNK_METADATA_JSON, EMBEDDING_CACHE, load_movies
 from sentence_transformers import SentenceTransformer
 from transformers.utils import logging as hf_logging
 
@@ -65,25 +65,39 @@ def cosine_similarity(vec1, vec2):
     return dot_product / (norm1 * norm2)
 
 
+def strip_string(sentence: str) -> str:
+    # strip leading/trailing white space of string
+    cleaned = sentence.strip()
+    if not cleaned:
+        return []
+    return cleaned
+
+
 def size_defined_chunking(text: str, chunk_size: int, overlap: int, semantic: bool = False) -> list[str]:
     # chunk text into size N chunks and return a list of the chunks
+    # if semantic, split text on puncutations
     chunks = []
+    strip_text = strip_string(text)
+    if not strip_text:
+        return []
     words = re.split(r"(?<=[.!?])\s+", text) if semantic else text.split()
+    strip_words = [x.strip() for x in words if x.strip()]
+    print(f"WORDS: {strip_words}")
     if overlap < 0 or overlap >= chunk_size:
         raise ValueError("overlap must be >= 0 and < chunk_size")
     i = 0
     step = chunk_size - overlap
-    while i < len(words):
-        chunks_words = words[i : i + chunk_size]
+    while i < len(strip_words):
+        chunks_words = strip_words[i : i + chunk_size]
         # chunk_size = 5, overlap = 2, step = 3
         # remaining only 2 words, we alreadyt captured previously break
         # also do not break if we haven't captured first chunks array
         if chunks and len(chunks_words) <= overlap:
             break
+        # trim leading and trailin white space before append
+
         chunks.append(" ".join(chunks_words))
         i += step
-    # for i in range(0, len(words), chunk_size):
-    # chunks.append(" ".join(words[i:i+chunk_size]))
     return chunks
 
 
@@ -91,17 +105,20 @@ def pretty_display_chunks(chunks: list[str], text_length: int, semantic: bool = 
     # Pretty print the list of chunks in specific format
     preamble = "Semantically chunking" if semantic else "Chunking"
     print(f"{preamble} {text_length} characters")
+    if not chunks:
+        print("1.")
     for i, word in enumerate(chunks):
         print(f"{i + 1}. {word}")
+
 
 def searching_chunks(query: str, limit: int = 10):
     chunk_sem = ChunkedSemanticSearch()
     movies = load_movies()
-    embeddings = chunk_sem.load_or_create_chunk_embeddings(movies)
+    _ = chunk_sem.load_or_create_chunk_embeddings(movies)
     result = chunk_sem.search_chunks(query, limit)
     for i, result_dict in enumerate(result):
-            print(f"\n{i}. {result_dict["title"]} (score: {result_dict["score"]:.4f})")
-            print(f"   {result_dict["document"]}...")
+        print(f"\n{i}. {result_dict['title']} (score: {result_dict['score']:.4f})")
+        print(f"   {result_dict['document']}...")
 
 
 class SemanticSearch:
@@ -226,7 +243,7 @@ class ChunkedSemanticSearch(SemanticSearch):
             return self.chunk_embeddings
         else:
             return self.build_chunk_embeddings(self.documents)
-        
+
     def search_chunks(self, query: str, limit: int = 10):
         query_embedding = self.generate_embedding(query)
         chunk_metadata = self.chunk_metadata["chunks"]
@@ -251,7 +268,7 @@ class ChunkedSemanticSearch(SemanticSearch):
                 movie_scores[movie_idx] = score
         # Sort movie scores from highest to lowest and apply limit.
         sorted_movie_scores = sorted(movie_scores.items(), key=lambda item: item[1], reverse=True)
-        # format return to be like 
+        # format return to be like
         """
         {
         "id": doc_id,
@@ -262,19 +279,17 @@ class ChunkedSemanticSearch(SemanticSearch):
         }
         """
         results = []
-        for i in range(0,limit):
+        for i in range(0, limit):
             val = {
                 "id": self.documents[sorted_movie_scores[i][0]]["id"],
                 "title": self.documents[sorted_movie_scores[i][0]]["title"],
                 "document": self.documents[sorted_movie_scores[i][0]]["description"][:100],
                 "score": round(sorted_movie_scores[i][1], 4),
-                "metadata": {}
+                "metadata": {},
             }
             # print(val)
             results.append(val)
         return results
-        
-
 
     def save_metadata(self, chunk_list: list):
         # use np.save methods to write files
