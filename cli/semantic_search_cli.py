@@ -9,10 +9,10 @@ from lib.semantic_search import (
     embed_query_text,
     embed_text,
     pretty_display_chunks,
+    searching_chunks,
     size_defined_chunking,
     verify_embeddings,
     verify_model,
-    searching_chunks
 )
 
 

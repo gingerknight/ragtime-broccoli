@@ -4,9 +4,10 @@ import re
 from pathlib import Path
 
 import numpy as np
-from .helpers import CHUNK_EMBEDDINGS_CACHE, CHUNK_METADATA_JSON, EMBEDDING_CACHE, load_movies
 from sentence_transformers import SentenceTransformer
 from transformers.utils import logging as hf_logging
+
+from .helpers import CHUNK_EMBEDDINGS_CACHE, CHUNK_METADATA_JSON, EMBEDDING_CACHE, load_movies
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_CACHE_DIR = PROJECT_ROOT / "data" / ".cache" / "huggingface"
