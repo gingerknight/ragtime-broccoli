@@ -1,5 +1,3 @@
-import os
-
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
 
@@ -16,11 +14,46 @@ def normalize(values: list[float]) -> list[float]:
     return normalized_scores
 
 
+def hybrid_score(bm25_score, semantic_score, alpha=0.5):
+    return alpha * bm25_score + (1 - alpha) * semantic_score
+
+
 def pretty_print(values: list[float]) -> None:
     # Pretty print values
     print("Normalized values:")
     for _, score in enumerate(values):
         print(f"* {score:.4f}")
+
+
+def print_results(results: list, n: int = 5) -> None:
+    for num, val in enumerate(results[:n]):
+        print(f"{num + 1}. {val[1]['title']}")
+        print(f"\tHybrid Score: {val[1]['hybrid_score']:.4f}")
+        print(f"\tBM25: {val[1]['bm25_normalized_score']:.4f}, Semantic: {val[1]['semantic_normalized_score']:.4f}")
+        print(f"\t{val[1]['document']}")
+
+
+def alpha_bar(alpha: float, width: int = 20) -> str:
+    # clamp to [0.0, 1.0]
+    alpha = max(0.0, min(1.0, alpha))
+
+    filled = round(alpha * width)
+    empty = width - filled
+    bar = "█" * filled + "-" * empty
+
+    pct_keyword = int(round(alpha * 100))
+    pct_semantic = 100 - pct_keyword
+
+    if alpha == 0.5:
+        label = "50/50 Split"
+    elif alpha == 1.0:
+        label = "100% Keyword"
+    elif alpha == 0.0:
+        label = "100% Semantic"
+    else:
+        label = f"{pct_keyword}% Keyword, {pct_semantic}% Semantic"
+
+    return f"α = {alpha:.1f}: [{bar}] {label}"
 
 
 class HybridSearch:
@@ -29,9 +62,9 @@ class HybridSearch:
         self.semantic_search = ChunkedSemanticSearch()
         self.semantic_search.load_or_create_chunk_embeddings(documents)
 
-        self.idx = InvertedIndex()
-        if not os.path.exists(self.idx.index_path):
-            self.idx.build()
+        self.idx = InvertedIndex.from_cache()
+        if not self.idx.index:
+            self.idx.build(self.documents)
             self.idx.save()
 
     def _bm25_search(self, query, limit):
@@ -39,7 +72,57 @@ class HybridSearch:
         return self.idx.bm25_search(query, limit)
 
     def weighted_search(self, query, alpha, limit=5):
-        raise NotImplementedError("Weighted hybrid search is not implemented yet.")
+        # call _bm25 method to et keyword search
+        hybrid_dict = {}
+        print(alpha_bar(alpha))
+        keyword_results = self._bm25_search(query, 500)
+        self.semantic_search.load_or_create_chunk_embeddings(self.documents)
+        semantic_results = self.semantic_search.search_chunks(query, 500)
+
+        """
+        Keyword Results: [(1771, 'Paddington', 10.489448461845111)]
+        Semantic Results: [
+            {
+                'id': 2784,
+                'title': 'Legends of the Fall',
+                'document': 'Sick of betrayals the United States government perpetrated on the Native Americans, Colonel William ',
+                'score': np.float32(0.5236),
+                'metadata': {}
+            },
+        """
+        # normalize scores
+        semantic_normalized = normalize([r["score"] for r in semantic_results])
+        bm25_normalized = normalize([r[2] for r in keyword_results])
+
+        # iterate over bm25, add to combined dict
+        for (id, title, _score), norm in zip(keyword_results, bm25_normalized, strict=True):
+            hybrid_dict[id] = {
+                "title": title,
+                "bm25_normalized_score": norm,
+                "semantic_normalized_score": 0.0,
+                "document": self.idx.docmap[id]["description"][:100],
+            }
+
+        # iterate over semantic, add to combined dict
+        for r, norm in zip(semantic_results, semantic_normalized, strict=True):
+            if r["id"] not in hybrid_dict:
+                hybrid_dict[r["id"]] = {
+                    "title": r["title"],
+                    "document": r["document"],
+                    "semantic_normalized_score": norm,
+                    "bm25_normalized_score": 0.0,
+                }
+            else:
+                hybrid_dict[r["id"]]["semantic_normalized_score"] = norm
+                hybrid_dict[r["id"]]["document"] = r["document"]
+
+        for _doc_id, row in hybrid_dict.items():
+            bm = row.get("bm25_normalized_score", 0.0)
+            sem = row.get("semantic_normalized_score", 0.0)
+            row["hybrid_score"] = hybrid_score(bm, sem, alpha)
+        print("=" * 80)
+        sorted_results = sorted(hybrid_dict.items(), key=lambda item: float(item[1]["hybrid_score"]), reverse=True)
+        print_results(sorted_results, limit)
 
     def rrf_search(self, query, k, limit=10):
         raise NotImplementedError("RRF hybrid search is not implemented yet.")

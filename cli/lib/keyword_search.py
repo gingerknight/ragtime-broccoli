@@ -83,7 +83,14 @@ class MovieSearch:
 
 class InvertedIndex:
     """
-    Inverted index (also referred to as a postings list, postings file, or inverted file) is a database index storing a mapping from content, such as words or numbers, to its locations in a table, or in a document or a set of documents (named in contrast to a forward index, which maps from documents to content).[1] The purpose of an inverted index is to allow fast full-text searches, at a cost of increased processing when a document is added to the database.[2] The inverted file may be the database file itself, rather than its index. It is the most popular data structure used in document retrieval systems,[3] used on a large scale for example in search engines. Additionally, several significant general-purpose mainframe-based database management systems have used inverted list architectures, including ADABAS, DATACOM/DB, and Model 204.
+    Inverted index (also referred to as a postings list, postings file, or inverted file) is a database
+    index storing a mapping from content, such as words or numbers, to its locations in a table, or
+    in a document or a set of documents (named in contrast to a forward index, which maps from documents to content).
+    [1] The purpose of an inverted index is to allow fast full-text searches, at a cost of increased processing
+    when a document is added to the database.[2] The inverted file may be the database file itself, rather than its index.
+    It is the most popular data structure used in document retrieval systems,[3] used on a large scale
+    for example in search engines. Additionally, several significant general-purpose mainframe-based
+    database management systems have used inverted list architectures, including ADABAS, DATACOM/DB, and Model 204.
     """
 
     def __init__(self):
