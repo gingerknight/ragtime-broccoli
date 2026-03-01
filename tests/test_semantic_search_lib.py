@@ -99,7 +99,7 @@ def test_build_embeddings_populates_docs_map_and_saves(monkeypatch, tmp_path):
     docs = _make_docs()
 
     calls = {"count": 0}
-    monkeypatch.setattr(search, "save", lambda: calls.__setitem__("count", calls["count"] + 1))
+    monkeypatch.setattr(search, "save", lambda _path: calls.__setitem__("count", calls["count"] + 1))
 
     embeddings = search.build_embeddings(docs)
 
@@ -160,7 +160,7 @@ def test_save_and_load_round_trip_embeddings(monkeypatch, tmp_path):
 
     # save() writes a relative ./cache folder; scope cwd to tmp path for isolation.
     monkeypatch.chdir(tmp_path)
-    search.save()
-    loaded = search.load()
+    search.save(sem_mod.EMBEDDING_CACHE)
+    loaded = search.load(sem_mod.EMBEDDING_CACHE)
 
     assert np.array_equal(loaded, np.array([[3.0, 4.0], [5.0, 6.0]]))

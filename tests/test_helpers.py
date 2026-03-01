@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-import cli.helpers as helpers
+import cli.lib.helpers as helpers
 
 
 def test_load_stopwords_reads_configured_file(tmp_path, monkeypatch):

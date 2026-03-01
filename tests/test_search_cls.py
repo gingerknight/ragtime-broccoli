@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 from errors.exception_handling import DataLoadError, IndexBuildError, InvalidTerm
 
-from cli.search_cls import InvertedIndex, MovieSearch
+from cli.lib.keyword_search import InvertedIndex, MovieSearch
 
 
 def make_movies():
@@ -19,7 +19,7 @@ def test_find_titles_orders_by_id_and_matches_tokens(monkeypatch):
     idx_cache = {"star": [2, 1]}
     docmap_cache = {1: {"title": "Star Trek"}, 2: {"title": "Star Wars"}}
 
-    monkeypatch.setattr("cli.search_cls.normalize", lambda q: ["star"])
+    monkeypatch.setattr("cli.lib.keyword_search.normalize", lambda q: ["star"])
 
     titles = ms.find_titles("star", idx_cache=idx_cache, docmap_cache=docmap_cache)
 
@@ -37,7 +37,7 @@ def test_find_titles_merges_multiple_tokens_without_duplicates(monkeypatch):
         2: {"title": "Star Wars"},
     }
 
-    monkeypatch.setattr("cli.search_cls.normalize", lambda q: ["space", "crew"])
+    monkeypatch.setattr("cli.lib.keyword_search.normalize", lambda q: ["space", "crew"])
 
     titles = ms.find_titles("space crew", idx_cache=idx_cache, docmap_cache=docmap_cache)
 
@@ -59,7 +59,7 @@ def test_inverted_index_build_populates_and_save_called(monkeypatch):
     ]
 
     save_calls = {"count": 0}
-    monkeypatch.setattr("cli.search_cls.normalize", lambda text: text.lower().split())
+    monkeypatch.setattr("cli.lib.keyword_search.normalize", lambda text: text.lower().split())
     monkeypatch.setattr(inv, "save", lambda: save_calls.__setitem__("count", save_calls["count"] + 1))
 
     inv.build(movies)
@@ -71,7 +71,7 @@ def test_inverted_index_build_populates_and_save_called(monkeypatch):
 
 def test_inverted_index_build_raises_for_missing_fields(monkeypatch):
     inv = InvertedIndex()
-    monkeypatch.setattr("cli.search_cls.normalize", lambda text: text.lower().split())
+    monkeypatch.setattr("cli.lib.keyword_search.normalize", lambda text: text.lower().split())
 
     with pytest.raises(IndexBuildError):
         inv.build([{"id": 1, "title": "Missing Description"}])
@@ -91,7 +91,7 @@ def test_get_tf_returns_normalized_token_count(monkeypatch):
     inv = InvertedIndex()
     inv.term_frequencies = {424: {"trapper": 4, "bear": 1}}
 
-    monkeypatch.setattr("cli.search_cls.normalize", lambda term: ["trapper"])
+    monkeypatch.setattr("cli.lib.keyword_search.normalize", lambda term: ["trapper"])
 
     assert inv.get_tf(424, "trappers") == 4
 
@@ -100,7 +100,7 @@ def test_get_tf_raises_for_multiword_term(monkeypatch):
     inv = InvertedIndex()
     inv.term_frequencies = {1: {"brave": 1}}
 
-    monkeypatch.setattr("cli.search_cls.normalize", lambda term: ["one", "two"])
+    monkeypatch.setattr("cli.lib.keyword_search.normalize", lambda term: ["one", "two"])
 
     with pytest.raises(InvalidTerm):
         inv.get_tf(1, "one two")
