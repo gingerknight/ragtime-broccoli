@@ -1,3 +1,4 @@
+from math import inf
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
 
@@ -25,11 +26,18 @@ def pretty_print(values: list[float]) -> None:
         print(f"* {score:.4f}")
 
 
-def print_results(results: list, n: int = 5) -> None:
+def print_hybrid_results(results: list, n: int = 5) -> None:
     for num, val in enumerate(results[:n]):
         print(f"{num + 1}. {val[1]['title']}")
         print(f"\tHybrid Score: {val[1]['hybrid_score']:.4f}")
         print(f"\tBM25: {val[1]['bm25_normalized_score']:.4f}, Semantic: {val[1]['semantic_normalized_score']:.4f}")
+        print(f"\t{val[1]['document']}")
+
+def print_rrf_results(results: list, n: int = 5) -> None:
+    for num, val in enumerate(results[:n]):
+        print(f"{num + 1}. {val[1]['title']}")
+        print(f"\tRRF Score: {val[1]['rrf_score_total']:.4f}")
+        print(f"\tBM25 Rank: {val[1]['bm25_rank']:.4f}, Semantic Rank: {val[1]['semantic_rank']:.4f}")
         print(f"\t{val[1]['document']}")
 
 
@@ -72,7 +80,7 @@ class HybridSearch:
         return self.idx.bm25_search(query, limit)
 
     def weighted_search(self, query, alpha, limit=5):
-        # call _bm25 method to et keyword search
+        # call _bm25 method to get keyword search
         hybrid_dict = {}
         print(alpha_bar(alpha))
         keyword_results = self._bm25_search(query, 500)
@@ -114,7 +122,6 @@ class HybridSearch:
                 }
             else:
                 hybrid_dict[r["id"]]["semantic_normalized_score"] = norm
-                hybrid_dict[r["id"]]["document"] = r["document"]
 
         for _doc_id, row in hybrid_dict.items():
             bm = row.get("bm25_normalized_score", 0.0)
@@ -122,7 +129,68 @@ class HybridSearch:
             row["hybrid_score"] = hybrid_score(bm, sem, alpha)
         print("=" * 80)
         sorted_results = sorted(hybrid_dict.items(), key=lambda item: float(item[1]["hybrid_score"]), reverse=True)
-        print_results(sorted_results, limit)
+        print_hybrid_results(sorted_results, limit)
 
     def rrf_search(self, query, k, limit=10):
-        raise NotImplementedError("RRF hybrid search is not implemented yet.")
+        """
+        Reciprocal rank fusion (RRF) is a method for combining multiple result sets with different relevance indicators into a single result set. 
+        RRF requires no tuning, and the different relevance indicators do not have to be related to each other to achieve high-quality results.
+
+        RRF uses the following formula to determine the score for ranking each document:
+        score = 0.0
+        for q in queries:
+            if d in result(q):
+                score += 1.0 / ( k + rank( result(q), d ) )
+        return score
+
+        # where
+        # k is a ranking constant
+        # q is a query in the set of queries
+        # d is a document in the result set of q
+        # result(q) is the result set of q
+        # rank( result(q), d ) is d's rank within the result(q) starting from 1
+        """
+        # call _bm25 method to get keyword search
+        rrf_dict = {}
+        keyword_results = self._bm25_search(query, 500)
+        self.semantic_search.load_or_create_chunk_embeddings(self.documents)
+        semantic_results = self.semantic_search.search_chunks(query, 500)
+
+        # iterate over bm25, add to rrf dict
+        # keyword results is sorted descendin
+        i = 1
+        for (id, title, _score) in keyword_results:
+            rrf_dict[id] = {
+                "title": title,
+                "bm25_rank": i,
+                "bm25_rrf_score": self.rrf_score(i,k),
+                "semantic_rank": inf,
+                "document": self.idx.docmap[id]["description"][:100],
+                "rrf_score_total": -inf
+            }
+            i += 1
+
+        
+        # iterate over semantic, add to rrf dict
+        i = 1
+        for r in semantic_results:
+            if r["id"] not in rrf_dict:
+                rrf_dict[r["id"]] = {
+                    "title": r["title"],
+                    "document": r["document"],
+                    "semantic_rank": i,
+                    "semantic_rrf_score": self.rrf_score(i,k),
+                    "bm25_rank": inf,
+                    "rrf_score_total": -inf
+                }
+            else:
+                rrf_dict[r["id"]]["semantic_rank"] = i
+                rrf_dict[r["id"]]["semantic_rrf_score"] = self.rrf_score(i,k)
+                rrf_dict[r["id"]]["rrf_score_total"] = rrf_dict[r["id"]]["semantic_rrf_score"] + rrf_dict[r["id"]]["bm25_rrf_score"]
+            i += 1
+
+        sorted_results = sorted(rrf_dict.items(), key=lambda item: float(item[1]["rrf_score_total"]), reverse=True)
+        print_rrf_results(sorted_results, limit)
+
+    def rrf_score(self, rank, k=60) -> float:
+        return 1 / (k + rank)
