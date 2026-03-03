@@ -8,6 +8,8 @@ dependencies = [
     "nltk==3.9.1",
     "numpy>=2.4.2",
     "sentence-transformers>=5.2.2",
+    "python-dotenv>=1.2.0",
+    "google-genai>=1.65.0",
 ]
 
 [tool.pytest.ini_options]

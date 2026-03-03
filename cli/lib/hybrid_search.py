@@ -1,6 +1,7 @@
 from math import inf
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
+from .gemini_client import GeminiClient
 
 
 def normalize(values: list[float]) -> list[float]:
@@ -194,3 +195,16 @@ class HybridSearch:
 
     def rrf_score(self, rank, k=60) -> float:
         return 1 / (k + rank)
+    
+    def enhanced_query(self, query:str, choice="spell"):
+        # do an enhanced query with the gemini api
+        gem_client = GeminiClient()
+        match choice:
+            case "spell":
+                response = gem_client.spell_check(query)
+                print(f"Enhanced query ({choice}): '{query}' -> '{response.text}'\n")
+            case "rewrite":
+                response = gem_client.rewrite_query(query)
+                print(f"Enhanced query ({choice}): '{query}' -> '{response.text}'\n")
+            case _:
+                raise NotImplementedError("Not an option that is implemented yet...")

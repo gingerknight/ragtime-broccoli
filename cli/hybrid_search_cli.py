@@ -18,10 +18,11 @@ def main() -> None:
     )
     weighted_search.add_argument("--limit", type=int, nargs="?", default=5, help="Top 'N' matches to return")
 
-    rrf = subparsers.add_parser("rrf-search", help="Perform Reciprocal Rank Fusion search")
-    rrf.add_argument("query", type=str, help="Query text parameter")
-    rrf.add_argument("-k", type=int, nargs="?", default=60, help="Weight parameter: lower value provide more weight to top ranks, higher value a more gradual drop off")
-    rrf.add_argument("--limit", type=int, nargs="?", default=5, help="How many results to return")
+    rrf_parser = subparsers.add_parser("rrf-search", help="Perform Reciprocal Rank Fusion search")
+    rrf_parser.add_argument("query", type=str, help="Query text parameter")
+    rrf_parser.add_argument("-k", type=int, nargs="?", default=60, help="Weight parameter: lower value provide more weight to top ranks, higher value a more gradual drop off")
+    rrf_parser.add_argument("--limit", type=int, nargs="?", default=5, help="How many results to return")
+    rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
 
     args = parser.parse_args()
 
@@ -36,7 +37,10 @@ def main() -> None:
         case "rrf-search":
             movies = load_movies()
             hybrid_instance = HybridSearch(movies)
-            hybrid_instance.rrf_search(args.query, args.k, args.limit)
+            if args.enhance:
+                hybrid_instance.enhanced_query(choice=args.enhance, query=args.query)
+            else:
+                hybrid_instance.rrf_search(args.query, args.k, args.limit)
         case _:
             parser.print_help()
 
