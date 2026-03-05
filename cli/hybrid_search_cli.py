@@ -38,7 +38,8 @@ def main() -> None:
             movies = load_movies()
             hybrid_instance = HybridSearch(movies)
             if args.enhance:
-                hybrid_instance.enhanced_query(choice=args.enhance, query=args.query)
+                new_query = hybrid_instance.enhanced_query(choice=args.enhance, query=args.query)
+                hybrid_instance.rrf_search(new_query.text, args.k, args.limit)
             else:
                 hybrid_instance.rrf_search(args.query, args.k, args.limit)
         case _:

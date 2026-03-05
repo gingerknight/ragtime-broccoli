@@ -203,8 +203,14 @@ class HybridSearch:
             case "spell":
                 response = gem_client.spell_check(query)
                 print(f"Enhanced query ({choice}): '{query}' -> '{response.text}'\n")
+                return response
             case "rewrite":
                 response = gem_client.rewrite_query(query)
                 print(f"Enhanced query ({choice}): '{query}' -> '{response.text}'\n")
+                return response
+            case "expand":
+                response = gem_client.expand_query(query)
+                print(f"Enhanced query ({choice}): '{query}' -> '{response.text}'\n")
+                return response
             case _:
                 raise NotImplementedError("Not an option that is implemented yet...")
