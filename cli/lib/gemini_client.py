@@ -32,13 +32,10 @@ class GeminiClient:
         Corrected:
         """
 
-        response = self.client.models.generate_content(
-            model="gemini-2.5-flash", 
-            contents=prompt
-            )
-        
+        response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+
         return response
-    
+
     def rewrite_query(self, query):
         # rewrite the query to be more optimal for search
         prompt = f"""Rewrite the user-provided movie search query below to be more specific and searchable.
@@ -61,13 +58,10 @@ class GeminiClient:
         User query: "{query}"
         """
 
-        response = self.client.models.generate_content(
-            model="gemini-2.5-flash", 
-            contents=prompt
-            )
-        
+        response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+
         return response
-    
+
     def expand_query(self, query):
         # send the query to Gemma and ask it to expand the query to be more optimal for search
         prompt = f"""Expand the user-provided movie search query below with related terms.
@@ -84,10 +78,6 @@ class GeminiClient:
         User query: "{query}"
         """
 
-        response = self.client.models.generate_content(
-            model="gemini-2.5-flash", 
-            contents=prompt
-            )
-        
-        return response
+        response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
 
+        return response

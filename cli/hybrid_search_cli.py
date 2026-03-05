@@ -20,9 +20,20 @@ def main() -> None:
 
     rrf_parser = subparsers.add_parser("rrf-search", help="Perform Reciprocal Rank Fusion search")
     rrf_parser.add_argument("query", type=str, help="Query text parameter")
-    rrf_parser.add_argument("-k", type=int, nargs="?", default=60, help="Weight parameter: lower value provide more weight to top ranks, higher value a more gradual drop off")
+    rrf_parser.add_argument(
+        "-k",
+        type=int,
+        nargs="?",
+        default=60,
+        help="Weight parameter: lower value provide more weight to top ranks, higher value a more gradual drop off",
+    )
     rrf_parser.add_argument("--limit", type=int, nargs="?", default=5, help="How many results to return")
-    rrf_parser.add_argument("--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method")
+    rrf_parser.add_argument(
+        "--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method"
+    )
+    rrf_parser.add_argument(
+        "--rerank-method", type=str, choices=["individual"], help="Rerank method for the documents after the RRF search queries."
+    )
 
     args = parser.parse_args()
 
@@ -40,6 +51,8 @@ def main() -> None:
             if args.enhance:
                 new_query = hybrid_instance.enhanced_query(choice=args.enhance, query=args.query)
                 hybrid_instance.rrf_search(new_query.text, args.k, args.limit)
+            elif args.rerank_method:
+                raise NotImplementedError("Not implemented yet.")
             else:
                 hybrid_instance.rrf_search(args.query, args.k, args.limit)
         case _:

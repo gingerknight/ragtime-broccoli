@@ -1,6 +1,4 @@
 import argparse
-import mimetypes
-
 
 
 def main() -> None:

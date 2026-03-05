@@ -1,7 +1,8 @@
 from math import inf
+
+from .gemini_client import GeminiClient
 from .keyword_search import InvertedIndex
 from .semantic_search import ChunkedSemanticSearch
-from .gemini_client import GeminiClient
 
 
 def normalize(values: list[float]) -> list[float]:
@@ -33,6 +34,7 @@ def print_hybrid_results(results: list, n: int = 5) -> None:
         print(f"\tHybrid Score: {val[1]['hybrid_score']:.4f}")
         print(f"\tBM25: {val[1]['bm25_normalized_score']:.4f}, Semantic: {val[1]['semantic_normalized_score']:.4f}")
         print(f"\t{val[1]['document']}")
+
 
 def print_rrf_results(results: list, n: int = 5) -> None:
     for num, val in enumerate(results[:n]):
@@ -134,7 +136,7 @@ class HybridSearch:
 
     def rrf_search(self, query, k, limit=10):
         """
-        Reciprocal rank fusion (RRF) is a method for combining multiple result sets with different relevance indicators into a single result set. 
+        Reciprocal rank fusion (RRF) is a method for combining multiple result sets with different relevance indicators into a single result set.
         RRF requires no tuning, and the different relevance indicators do not have to be related to each other to achieve high-quality results.
 
         RRF uses the following formula to determine the score for ranking each document:
@@ -160,18 +162,17 @@ class HybridSearch:
         # iterate over bm25, add to rrf dict
         # keyword results is sorted descendin
         i = 1
-        for (id, title, _score) in keyword_results:
+        for id, title, _score in keyword_results:
             rrf_dict[id] = {
                 "title": title,
                 "bm25_rank": i,
-                "bm25_rrf_score": self.rrf_score(i,k),
+                "bm25_rrf_score": self.rrf_score(i, k),
                 "semantic_rank": inf,
                 "document": self.idx.docmap[id]["description"][:100],
-                "rrf_score_total": -inf
+                "rrf_score_total": -inf,
             }
             i += 1
 
-        
         # iterate over semantic, add to rrf dict
         i = 1
         for r in semantic_results:
@@ -180,14 +181,16 @@ class HybridSearch:
                     "title": r["title"],
                     "document": r["document"],
                     "semantic_rank": i,
-                    "semantic_rrf_score": self.rrf_score(i,k),
+                    "semantic_rrf_score": self.rrf_score(i, k),
                     "bm25_rank": inf,
-                    "rrf_score_total": -inf
+                    "rrf_score_total": -inf,
                 }
             else:
                 rrf_dict[r["id"]]["semantic_rank"] = i
-                rrf_dict[r["id"]]["semantic_rrf_score"] = self.rrf_score(i,k)
-                rrf_dict[r["id"]]["rrf_score_total"] = rrf_dict[r["id"]]["semantic_rrf_score"] + rrf_dict[r["id"]]["bm25_rrf_score"]
+                rrf_dict[r["id"]]["semantic_rrf_score"] = self.rrf_score(i, k)
+                rrf_dict[r["id"]]["rrf_score_total"] = (
+                    rrf_dict[r["id"]]["semantic_rrf_score"] + rrf_dict[r["id"]]["bm25_rrf_score"]
+                )
             i += 1
 
         sorted_results = sorted(rrf_dict.items(), key=lambda item: float(item[1]["rrf_score_total"]), reverse=True)
@@ -195,8 +198,8 @@ class HybridSearch:
 
     def rrf_score(self, rank, k=60) -> float:
         return 1 / (k + rank)
-    
-    def enhanced_query(self, query:str, choice="spell"):
+
+    def enhanced_query(self, query: str, choice="spell"):
         # do an enhanced query with the gemini api
         gem_client = GeminiClient()
         match choice:
