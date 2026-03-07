@@ -2,6 +2,7 @@ import argparse
 
 from lib.helpers import load_movies
 from lib.hybrid_search import HybridSearch, normalize, pretty_print, print_rrf_results
+from lib.reranking import rerank_gemini
 
 
 def main() -> None:
@@ -57,8 +58,7 @@ def main() -> None:
                 print_rrf_results(sorted_results, args.limit)
             elif args.rerank_method:
                 sorted_results = hybrid_instance.rrf_search(args.query, args.k, 5 * (args.limit))
-                hybrid_instance.rerank_gemini(args.query, sorted_results, args.rerank_method, args.k, args.limit)
-                # raise NotImplementedError("Not implemented yet.")
+                rerank_gemini(args.query, sorted_results, args.rerank_method, args.k, args.limit)
             else:
                 sorted_results = hybrid_instance.rrf_search(args.query, args.k, args.limit)
                 print_rrf_results(sorted_results, args.limit)
