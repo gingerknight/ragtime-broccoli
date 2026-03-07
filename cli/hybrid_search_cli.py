@@ -1,7 +1,7 @@
 import argparse
 
 from lib.helpers import load_movies
-from lib.hybrid_search import HybridSearch, normalize, pretty_print, print_rrf_reranked, print_rrf_results
+from lib.hybrid_search import HybridSearch, normalize, pretty_print, print_rrf_results
 
 
 def main() -> None:
@@ -34,7 +34,7 @@ def main() -> None:
     rrf_parser.add_argument(
         "--rerank-method",
         type=str,
-        choices=["individual"],
+        choices=["individual", "batch"],
         help="Rerank method for the documents after the RRF search queries.",
     )
 
@@ -57,8 +57,7 @@ def main() -> None:
                 print_rrf_results(sorted_results, args.limit)
             elif args.rerank_method:
                 sorted_results = hybrid_instance.rrf_search(args.query, args.k, 5 * (args.limit))
-                reranked_results = hybrid_instance.rerank_gemini(args.query, sorted_results)
-                print_rrf_reranked(reranked_results, args.query, args.k, args.limit)
+                hybrid_instance.rerank_gemini(args.query, sorted_results, args.rerank_method, args.k, args.limit)
                 # raise NotImplementedError("Not implemented yet.")
             else:
                 sorted_results = hybrid_instance.rrf_search(args.query, args.k, args.limit)

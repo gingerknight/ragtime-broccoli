@@ -102,3 +102,22 @@ class GeminiClient:
 
         response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
         return response.text
+
+    def rerank_docs_batch(self, query: str, documents: list):
+        # batch process documents and have the LLM rerank them
+        prompt = f"""Rank the movies listed below by relevance to the following search query.
+
+        Query: "{query}"
+
+        Movies:
+        {documents}
+
+        Return ONLY the movie IDs in order of relevance (best match first). Return a valid JSON list, nothing else.
+        DO NOT INCLUDE any markdown formatting
+
+        For example:
+        [75, 12, 34, 2, 1]
+
+        Ranking:"""
+        response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        return response.text

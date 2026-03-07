@@ -1,4 +1,4 @@
-from math import inf
+import json
 
 from .gemini_client import GeminiClient
 from .keyword_search import InvertedIndex
@@ -39,8 +39,8 @@ def print_hybrid_results(results: list, n: int = 5) -> None:
 def print_rrf_results(results: list, n: int = 5) -> None:
     for num, val in enumerate(results[:n]):
         print(f"{num + 1}. {val[1]['title']}")
-        print(f"\tRRF Score: {val[1]['rrf_score_total']:.4f}")
-        print(f"\tBM25 Rank: {val[1]['bm25_rank']:.4f}, Semantic Rank: {val[1]['semantic_rank']:.4f}")
+        print(f"\tRRF Score: {val[1]['rrf_score']:.4f}")
+        print(f"\tBM25 Rank: {val[1]['bm25_rank']}, Semantic Rank: {val[1]['semantic_rank']}")
         print(f"\t{val[1]['document'][:100]}")
 
 
@@ -50,8 +50,19 @@ def print_rrf_reranked(results: list, query: str, k, n: int = 5) -> None:
     for num, val in enumerate(results[:n]):
         print(f"{num + 1}. {val[1]['title']}")
         print(f"Re-rank Score: {val[1]['rerank_score']}/10")
-        print(f"\tRRF Score: {val[1]['rrf_score_total']:.4f}")
-        print(f"\tBM25 Rank: {val[1]['bm25_rank']:.4f}, Semantic Rank: {val[1]['semantic_rank']:.4f}")
+        print(f"\tRRF Score: {val[1]['rrf_score']:.4f}")
+        print(f"\tBM25 Rank: {val[1]['bm25_rank']}, Semantic Rank: {val[1]['semantic_rank']}")
+        print(f"\t{val[1]['document'][:100]}")
+
+
+def print_rrf_reranked_batched(results: list, query: str, k, n: int = 5) -> None:
+    print(f"Re-ranking top {n} results using batch method...")
+    print(f"Reciprocal Rank Fusion Results for '{query}' (k={k})")
+    for num, val in enumerate(results[:n]):
+        print(f"{num + 1}. {val[1]['title']}")
+        print(f"\tRe-rank Rank: {num + 1}")
+        print(f"\tRRF Score: {val[1]['rrf_score']:.4f}")
+        print(f"\tBM25 Rank: {val[1]['bm25_rank']}, Semantic Rank: {val[1]['semantic_rank']}")
         print(f"\t{val[1]['document'][:100]}")
 
 
@@ -177,10 +188,9 @@ class HybridSearch:
             rrf_dict[id] = {
                 "title": title,
                 "bm25_rank": i,
-                "bm25_rrf_score": self.rrf_score(i, k),
-                "semantic_rank": inf,
+                "rrf_score": self.rrf_score(i, k),
+                "semantic_rank": None,
                 "document": self.idx.docmap[id]["description"],
-                "rrf_score_total": -inf,
             }
             i += 1
 
@@ -192,26 +202,23 @@ class HybridSearch:
                     "title": r["title"],
                     "document": r["document"],
                     "semantic_rank": i,
-                    "semantic_rrf_score": self.rrf_score(i, k),
-                    "bm25_rank": inf,
-                    "rrf_score_total": -inf,
+                    "rrf_score": self.rrf_score(i, k),
+                    "bm25_rank": None,
                 }
             else:
                 rrf_dict[r["id"]]["semantic_rank"] = i
-                rrf_dict[r["id"]]["semantic_rrf_score"] = self.rrf_score(i, k)
-                rrf_dict[r["id"]]["rrf_score_total"] = (
-                    rrf_dict[r["id"]]["semantic_rrf_score"] + rrf_dict[r["id"]]["bm25_rrf_score"]
-                )
+                rrf_dict[r["id"]]["rrf_score"] += self.rrf_score(i, k)
+
             i += 1
 
-        sorted_results = sorted(rrf_dict.items(), key=lambda item: float(item[1]["rrf_score_total"]), reverse=True)
+        sorted_results = sorted(rrf_dict.items(), key=lambda item: float(item[1]["rrf_score"]), reverse=True)
         return sorted_results
         # print_rrf_results(sorted_results, limit)
 
     def rrf_score(self, rank, k=60) -> float:
         return 1 / (k + rank)
 
-    def rerank_gemini(self, query, results: list):
+    def rerank_gemini(self, query, results: list, q_method: str, k, limit):
         llm_client = GeminiClient()
         """
         results is a list of tuples. [0] is doc id, [1] is the dictionary
@@ -227,25 +234,40 @@ class HybridSearch:
                 }
             )
         """
-        for _, val in enumerate(results):
-            raw_score = llm_client.rerank_doc_individual(query, val[1])
-            try:
-                score = float(str(raw_score).strip().split()[0])
-            except (ValueError, IndexError):
-                score = 0.0
+        match q_method:
+            case "individual":
+                for _, val in enumerate(results):
+                    raw_score = llm_client.rerank_doc_individual(query, val[1])
+                    try:
+                        score = float(str(raw_score).strip().split()[0])
+                    except (ValueError, IndexError):
+                        score = 0.0
 
-            val[1]["rerank_score"] = score
-            # print(f"Score from Gemini: {score}")
-            # print(f"Sleeping...")
-            # sleep(5)
-        # print(f"Results: {results[:4]}")
-        sorted_results = sorted(
-            results,
-            key=lambda item: float(item[1].get("rerank_score", float("-inf"))),
-            reverse=True,
-        )
-        return sorted_results
-        # return results
+                    val[1]["rerank_score"] = score
+                    # print(f"Score from Gemini: {score}")
+                    # print(f"Sleeping...")
+                    # sleep(5)
+                # print(f"Results: {results[:4]}")
+                sorted_results = sorted(
+                    results,
+                    key=lambda item: float(item[1].get("rerank_score", float("-inf"))),
+                    reverse=True,
+                )
+                print_rrf_reranked(sorted_results, query, k, limit)
+            case "batch":
+                # build hashmap for results list with docID as key and tuple as value
+                ref_result = {}
+                for val in results:
+                    ref_result[val[0]] = val
+                raw_score = llm_client.rerank_docs_batch(query, results)
+                reranked_results = []
+                scores = json.loads(raw_score)
+                print(f"Score list: {scores}")
+                for score in scores:
+                    reranked_results.append(ref_result[score])
+                print_rrf_reranked_batched(reranked_results, query, k, limit)
+            case _:
+                raise NotImplementedError("Not implemented rerank method for LLM processing...")
 
     def enhanced_query(self, query: str, choice="spell"):
         # do an enhanced query with the gemini api
