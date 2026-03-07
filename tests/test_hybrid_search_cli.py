@@ -23,6 +23,14 @@ class _FakeHybridSearch:
 
     def rrf_search(self, query, k, limit):
         self.rrf_args = (query, k, limit)
+        return [(10, {
+                'title': 'string',
+                'bm25_rank': 4,
+                'bm25_rrf_score': 0.01234,
+                'semantic_rank': 5,
+                'document': 'Movies are cool yo',
+                'rrf_score': 0.03456,
+                'semantic_rrf_score': 0.9876})]
 
 
 def test_main_normalize_path(monkeypatch):
@@ -75,7 +83,6 @@ def test_main_rrf_enhance_path(monkeypatch):
         "parse_args",
         lambda _self: Namespace(
             command="rrf-search",
-            rrf_mode="enhance",
             query="ber",
             enhance="spell",
             rerank_method=None,
@@ -90,10 +97,10 @@ def test_main_rrf_enhance_path(monkeypatch):
 
     assert rc is None
     assert fake_hybrid.enhanced_args == ("spell", "ber")
-    assert fake_hybrid.rrf_args == ("enhanced query", 60, 2)
+    assert fake_hybrid.rrf_args == ("enhanced query", 60, 500)
 
 
-def test_main_rrf_rerank_method_not_implemented(monkeypatch):
+def test_main_rrf_rerank_path(monkeypatch):
     fake_movies = [{"id": 1, "title": "A", "description": "Desc"}]
     fake_hybrid = _FakeHybridSearch(fake_movies)
 
@@ -102,7 +109,6 @@ def test_main_rrf_rerank_method_not_implemented(monkeypatch):
         "parse_args",
         lambda _self: Namespace(
             command="rrf-search",
-            rrf_mode="enhance",
             query="bear",
             enhance=None,
             rerank_method="individual",
@@ -113,8 +119,10 @@ def test_main_rrf_rerank_method_not_implemented(monkeypatch):
     monkeypatch.setattr(cli_mod, "load_movies", lambda: fake_movies)
     monkeypatch.setattr(cli_mod, "HybridSearch", lambda movies: fake_hybrid)
 
-    with pytest.raises(NotImplementedError):
-        cli_mod.main()
+    rc = cli_mod.main()
+
+    assert rc is None
+    assert fake_hybrid
 
 
 def test_main_rrf_default_path(monkeypatch):

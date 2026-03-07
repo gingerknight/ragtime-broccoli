@@ -53,7 +53,7 @@ def main() -> None:
             hybrid_instance = HybridSearch(movies)
             if args.enhance:
                 new_query = hybrid_instance.enhanced_query(choice=args.enhance, query=args.query)
-                sorted_results = hybrid_instance.rrf_search(new_query.text, args.k)
+                sorted_results = hybrid_instance.rrf_search(new_query.text, args.k, 500)
                 print_rrf_results(sorted_results, args.limit)
             elif args.rerank_method:
                 sorted_results = hybrid_instance.rrf_search(args.query, args.k, 5 * (args.limit))

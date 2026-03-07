@@ -85,7 +85,7 @@ def test_print_helpers(capsys):
     )
     hybrid_mod.print_rrf_results(
         [
-            (2, {"title": "B", "rrf_score_total": 0.1, "bm25_rank": 1, "semantic_rank": 2, "document": "y"}),
+            (2, {"title": "B", "rrf_score": 0.1, "bm25_rank": 1, "semantic_rank": 2, "document": "y"}),
         ],
         n=1,
     )
@@ -162,16 +162,12 @@ def test_rrf_search_combines_and_sorts(monkeypatch):
     hs.idx = _FakeIndex()
     hs._bm25_search = lambda _query, _limit: [(1, "A", 2.0), (2, "B", 1.0)]
 
-    captured = {"results": None, "limit": None}
-    monkeypatch.setattr(
-        hybrid_mod, "print_rrf_results", lambda results, n: captured.update({"results": results, "limit": n})
-    )
+    results = hs.rrf_search("bear", k=60, gather_limit=100)
 
-    hs.rrf_search("bear", k=60, limit=3)
-
-    assert captured["limit"] == 3
-    assert captured["results"][0][0] == 2
-    assert hs.semantic_search.search_args == ("bear", 500)
+    assert results[0][0] == 2
+    assert results[0][1]["title"] == "B"
+    assert results[0][1]["document"] == "doc two"
+    assert hs.semantic_search.search_args == ("bear", 100)
 
 
 def test_rrf_score():
