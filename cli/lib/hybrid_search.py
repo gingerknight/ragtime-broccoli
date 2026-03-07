@@ -41,7 +41,18 @@ def print_rrf_results(results: list, n: int = 5) -> None:
         print(f"{num + 1}. {val[1]['title']}")
         print(f"\tRRF Score: {val[1]['rrf_score_total']:.4f}")
         print(f"\tBM25 Rank: {val[1]['bm25_rank']:.4f}, Semantic Rank: {val[1]['semantic_rank']:.4f}")
-        print(f"\t{val[1]['document']}")
+        print(f"\t{val[1]['document'][:100]}")
+
+
+def print_rrf_reranked(results: list, query: str, k, n: int = 5) -> None:
+    print(f"Re-ranking top {n} results using individual method...")
+    print(f"Reciprocal Rank Fusion Results for '{query}' (k={k})")
+    for num, val in enumerate(results[:n]):
+        print(f"{num + 1}. {val[1]['title']}")
+        print(f"Re-rank Score: {val[1]['rerank_score']}/10")
+        print(f"\tRRF Score: {val[1]['rrf_score_total']:.4f}")
+        print(f"\tBM25 Rank: {val[1]['bm25_rank']:.4f}, Semantic Rank: {val[1]['semantic_rank']:.4f}")
+        print(f"\t{val[1]['document'][:100]}")
 
 
 def alpha_bar(alpha: float, width: int = 20) -> str:
@@ -134,7 +145,7 @@ class HybridSearch:
         sorted_results = sorted(hybrid_dict.items(), key=lambda item: float(item[1]["hybrid_score"]), reverse=True)
         print_hybrid_results(sorted_results, limit)
 
-    def rrf_search(self, query, k, limit=10):
+    def rrf_search(self, query, k, gather_limit=5):  # 500
         """
         Reciprocal rank fusion (RRF) is a method for combining multiple result sets with different relevance indicators into a single result set.
         RRF requires no tuning, and the different relevance indicators do not have to be related to each other to achieve high-quality results.
@@ -155,9 +166,9 @@ class HybridSearch:
         """
         # call _bm25 method to get keyword search
         rrf_dict = {}
-        keyword_results = self._bm25_search(query, 500)
+        keyword_results = self._bm25_search(query, gather_limit)
         self.semantic_search.load_or_create_chunk_embeddings(self.documents)
-        semantic_results = self.semantic_search.search_chunks(query, 500)
+        semantic_results = self.semantic_search.search_chunks(query, gather_limit)
 
         # iterate over bm25, add to rrf dict
         # keyword results is sorted descendin
@@ -168,7 +179,7 @@ class HybridSearch:
                 "bm25_rank": i,
                 "bm25_rrf_score": self.rrf_score(i, k),
                 "semantic_rank": inf,
-                "document": self.idx.docmap[id]["description"][:100],
+                "document": self.idx.docmap[id]["description"],
                 "rrf_score_total": -inf,
             }
             i += 1
@@ -194,10 +205,47 @@ class HybridSearch:
             i += 1
 
         sorted_results = sorted(rrf_dict.items(), key=lambda item: float(item[1]["rrf_score_total"]), reverse=True)
-        print_rrf_results(sorted_results, limit)
+        return sorted_results
+        # print_rrf_results(sorted_results, limit)
 
     def rrf_score(self, rank, k=60) -> float:
         return 1 / (k + rank)
+
+    def rerank_gemini(self, query, results: list):
+        llm_client = GeminiClient()
+        """
+        results is a list of tuples. [0] is doc id, [1] is the dictionary
+        (doc_id#,
+            {
+                'title': 'string',
+                'bm25_rank': #,
+                'bm25_rrf_score': float,
+                'semantic_rank': #,
+                'document': 'string',
+                'rrf_score_total': float,
+                'semantic_rrf_score': float,
+                }
+            )
+        """
+        for _, val in enumerate(results):
+            raw_score = llm_client.rerank_doc_individual(query, val[1])
+            try:
+                score = float(str(raw_score).strip().split()[0])
+            except (ValueError, IndexError):
+                score = 0.0
+
+            val[1]["rerank_score"] = score
+            # print(f"Score from Gemini: {score}")
+            # print(f"Sleeping...")
+            # sleep(5)
+        # print(f"Results: {results[:4]}")
+        sorted_results = sorted(
+            results,
+            key=lambda item: float(item[1].get("rerank_score", float("-inf"))),
+            reverse=True,
+        )
+        return sorted_results
+        # return results
 
     def enhanced_query(self, query: str, choice="spell"):
         # do an enhanced query with the gemini api

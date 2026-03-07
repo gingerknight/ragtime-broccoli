@@ -70,7 +70,16 @@ def test_print_helpers(capsys):
     hybrid_mod.pretty_print([1.0, 0.5])
     hybrid_mod.print_hybrid_results(
         [
-            (1, {"title": "A", "hybrid_score": 0.9, "bm25_normalized_score": 1.0, "semantic_normalized_score": 0.8, "document": "x"}),
+            (
+                1,
+                {
+                    "title": "A",
+                    "hybrid_score": 0.9,
+                    "bm25_normalized_score": 1.0,
+                    "semantic_normalized_score": 0.8,
+                    "document": "x",
+                },
+            ),
         ],
         n=1,
     )
@@ -134,7 +143,9 @@ def test_weighted_search_builds_scores_and_prints(monkeypatch):
     hs._bm25_search = lambda _query, _limit: [(1, "A", 2.0), (2, "B", 1.0)]
 
     captured = {"results": None, "limit": None}
-    monkeypatch.setattr(hybrid_mod, "print_hybrid_results", lambda results, n: captured.update({"results": results, "limit": n}))
+    monkeypatch.setattr(
+        hybrid_mod, "print_hybrid_results", lambda results, n: captured.update({"results": results, "limit": n})
+    )
 
     hs.weighted_search("bear", alpha=0.75, limit=2)
 
@@ -152,7 +163,9 @@ def test_rrf_search_combines_and_sorts(monkeypatch):
     hs._bm25_search = lambda _query, _limit: [(1, "A", 2.0), (2, "B", 1.0)]
 
     captured = {"results": None, "limit": None}
-    monkeypatch.setattr(hybrid_mod, "print_rrf_results", lambda results, n: captured.update({"results": results, "limit": n}))
+    monkeypatch.setattr(
+        hybrid_mod, "print_rrf_results", lambda results, n: captured.update({"results": results, "limit": n})
+    )
 
     hs.rrf_search("bear", k=60, limit=3)
 

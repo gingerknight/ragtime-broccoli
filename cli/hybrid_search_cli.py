@@ -1,7 +1,7 @@
 import argparse
 
 from lib.helpers import load_movies
-from lib.hybrid_search import HybridSearch, normalize, pretty_print
+from lib.hybrid_search import HybridSearch, normalize, pretty_print, print_rrf_reranked, print_rrf_results
 
 
 def main() -> None:
@@ -32,7 +32,10 @@ def main() -> None:
         "--enhance", type=str, choices=["spell", "rewrite", "expand"], help="Query enhancement method"
     )
     rrf_parser.add_argument(
-        "--rerank-method", type=str, choices=["individual"], help="Rerank method for the documents after the RRF search queries."
+        "--rerank-method",
+        type=str,
+        choices=["individual"],
+        help="Rerank method for the documents after the RRF search queries.",
     )
 
     args = parser.parse_args()
@@ -50,11 +53,16 @@ def main() -> None:
             hybrid_instance = HybridSearch(movies)
             if args.enhance:
                 new_query = hybrid_instance.enhanced_query(choice=args.enhance, query=args.query)
-                hybrid_instance.rrf_search(new_query.text, args.k, args.limit)
+                sorted_results = hybrid_instance.rrf_search(new_query.text, args.k)
+                print_rrf_results(sorted_results, args.limit)
             elif args.rerank_method:
-                raise NotImplementedError("Not implemented yet.")
+                sorted_results = hybrid_instance.rrf_search(args.query, args.k, 5 * (args.limit))
+                reranked_results = hybrid_instance.rerank_gemini(args.query, sorted_results)
+                print_rrf_reranked(reranked_results, args.query, args.k, args.limit)
+                # raise NotImplementedError("Not implemented yet.")
             else:
-                hybrid_instance.rrf_search(args.query, args.k, args.limit)
+                sorted_results = hybrid_instance.rrf_search(args.query, args.k, args.limit)
+                print_rrf_results(sorted_results, args.limit)
         case _:
             parser.print_help()
 

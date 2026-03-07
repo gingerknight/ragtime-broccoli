@@ -81,3 +81,24 @@ class GeminiClient:
         response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
 
         return response
+
+    def rerank_doc_individual(self, query: str, document: dict):
+        # send the document to gemini for evaluation and scoring
+        # print(f"Querying Gemini:\n{query} - {document['title']}")
+        prompt = f"""Rate how well this movie matches the search query.
+
+        Query: "{query}"
+        Movie: {document.get("title", "")} - {document.get("document", "")}
+
+        Consider:
+        - Direct relevance to query
+        - User intent (what they're looking for)
+        - Content appropriateness
+
+        Rate 0.0-10.0 (10.0 = perfect match).
+        Output ONLY the number in your response, no other text or explanation.
+
+        Score:"""
+
+        response = self.client.models.generate_content(model="gemini-2.5-flash", contents=prompt)
+        return response.text
