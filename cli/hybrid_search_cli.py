@@ -1,8 +1,66 @@
 import argparse
+from dataclasses import dataclass
 
+from lib.cross_encoding import cross_encoding
 from lib.helpers import load_movies
 from lib.hybrid_search import HybridSearch, normalize, pretty_print, print_rrf_results
-from lib.reranking import rerank_gemini
+from lib.reranking import (
+    print_rrf_reranked,
+    print_rrf_reranked_batched,
+    print_rrf_reranked_cross_encoder,
+    rerank_gemini,
+)
+
+
+@dataclass(frozen=True)
+class RRF_Search_Request:
+    query: str
+    enhance: str | None
+    rerank_method: str | None
+    limit: int = 5
+    k: int = 60
+
+
+def handle_rrf_search(args: argparse.Namespace, hybrid: HybridSearch) -> None:
+    # RRF search has multiple options; route with small helper steps.
+    req = RRF_Search_Request(
+        query=args.query, limit=args.limit, k=args.k, enhance=args.enhance, rerank_method=args.rerank_method
+    )
+    query = _resolve_query(req, hybrid)
+    gather_limit = 500 if req.enhance else (5 * req.limit) if req.rerank_method else req.limit
+    results = hybrid.rrf_search(query, req.k, gather_limit)
+    results = _maybe_rerank(req, query, results)
+    _output_rrf(results, req)
+
+
+def _resolve_query(req: RRF_Search_Request, hs: HybridSearch):
+    # either do enhanced or standard rrf-search
+    if req.enhance:
+        new_query = hs.enhanced_query(choice=req.enhance, query=req.query)
+        return new_query.text
+    return req.query
+
+
+def _maybe_rerank(req, query, results):
+    # do reranking if that method is included
+    if req.rerank_method:
+        if req.rerank_method == "cross_encoder":
+            results = cross_encoding(results, query)
+        else:
+            results = rerank_gemini(query, results, req.rerank_method, req.k, req.limit)
+    return results
+
+
+def _output_rrf(results: list, req: RRF_Search_Request):
+    if req.rerank_method:
+        if req.rerank_method == "individual":
+            print_rrf_reranked(results, req.query, req.k, req.limit)
+        elif req.rerank_method == "batch":
+            print_rrf_reranked_batched(results, req.query, req.k, req.limit)
+        elif req.rerank_method == "cross_encoder":
+            print_rrf_reranked_cross_encoder(results, req.query, req.k, req.limit)
+    else:
+        print_rrf_results(results, req.limit)
 
 
 def main() -> None:
@@ -35,7 +93,7 @@ def main() -> None:
     rrf_parser.add_argument(
         "--rerank-method",
         type=str,
-        choices=["individual", "batch"],
+        choices=["individual", "batch", "cross_encoder"],
         help="Rerank method for the documents after the RRF search queries.",
     )
 
@@ -52,16 +110,7 @@ def main() -> None:
         case "rrf-search":
             movies = load_movies()
             hybrid_instance = HybridSearch(movies)
-            if args.enhance:
-                new_query = hybrid_instance.enhanced_query(choice=args.enhance, query=args.query)
-                sorted_results = hybrid_instance.rrf_search(new_query.text, args.k, 500)
-                print_rrf_results(sorted_results, args.limit)
-            elif args.rerank_method:
-                sorted_results = hybrid_instance.rrf_search(args.query, args.k, 5 * (args.limit))
-                rerank_gemini(args.query, sorted_results, args.rerank_method, args.k, args.limit)
-            else:
-                sorted_results = hybrid_instance.rrf_search(args.query, args.k, args.limit)
-                print_rrf_results(sorted_results, args.limit)
+            handle_rrf_search(args, hybrid_instance)
         case _:
             parser.print_help()
 

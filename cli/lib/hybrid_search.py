@@ -143,13 +143,6 @@ class HybridSearch:
             if d in result(q):
                 score += 1.0 / ( k + rank( result(q), d ) )
         return score
-
-        # where
-        # k is a ranking constant
-        # q is a query in the set of queries
-        # d is a document in the result set of q
-        # result(q) is the result set of q
-        # rank( result(q), d ) is d's rank within the result(q) starting from 1
         """
         # call _bm25 method to get keyword search
         rrf_dict = {}
@@ -193,7 +186,6 @@ class HybridSearch:
 
     def rrf_score(self, rank, k=60) -> float:
         return 1 / (k + rank)
-
 
     def enhanced_query(self, query: str, choice="spell"):
         # do an enhanced query with the gemini api

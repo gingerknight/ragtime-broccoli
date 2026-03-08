@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from argparse import Namespace
 
-import pytest
-
 import cli.hybrid_search_cli as cli_mod
 
 
@@ -23,14 +21,20 @@ class _FakeHybridSearch:
 
     def rrf_search(self, query, k, limit):
         self.rrf_args = (query, k, limit)
-        return [(10, {
-                'title': 'string',
-                'bm25_rank': 4,
-                'bm25_rrf_score': 0.01234,
-                'semantic_rank': 5,
-                'document': 'Movies are cool yo',
-                'rrf_score': 0.03456,
-                'semantic_rrf_score': 0.9876})]
+        return [
+            (
+                10,
+                {
+                    "title": "string",
+                    "bm25_rank": 4,
+                    "bm25_rrf_score": 0.01234,
+                    "semantic_rank": 5,
+                    "document": "Movies are cool yo",
+                    "rrf_score": 0.03456,
+                    "semantic_rrf_score": 0.9876,
+                },
+            )
+        ]
 
 
 def test_main_normalize_path(monkeypatch):
